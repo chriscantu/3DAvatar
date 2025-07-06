@@ -20,19 +20,20 @@ Build a 3D room in React using Three.js, featuring a simple humanoid avatar that
 ## Step-by-Step Plan
 
 ### 1. Project Setup
-- [ ] Initialize monorepo or folder structure for frontend (React) and backend (Node.js/Express)
-- [ ] Add dependencies:
-  - Frontend: React, Three.js, speech-to-text, text-to-speech, axios/fetch
-  - Backend: Express, OpenAI SDK, dotenv, CORS
-  - Testing: Jest, React Testing Library, Playwright/Cypress
+- [x] Initialize Git repository
+- [x] Create .gitignore, README, LICENSE
+- [x] Set up monorepo structure for frontend (React) and backend (Node.js/Express)
+- [x] Add dependencies:
+  - Frontend: React, Three.js, @react-three/fiber, @react-three/drei, axios, testing libraries
+  - Backend: Express, OpenAI SDK, dotenv, CORS, TypeScript, testing libraries
 
 ### 2. 3D Room (Frontend)
-- [ ] Set up Three.js canvas in React
-- [ ] Build a simple 3D room (walls, floor, lighting)
+- [x] Set up Three.js canvas in React
+- [x] Build a simple 3D room (walls, floor, lighting)
 
 ### 3. Avatar (Frontend)
-- [ ] Create a simple humanoid avatar using Three.js primitives
-- [ ] Place the avatar in the room
+- [x] Create a simple humanoid avatar using Three.js primitives
+- [x] Place the avatar in the room
 
 ### 4. Chat UI (Frontend)
 - [ ] Implement chat overlay (text input, message display)
@@ -40,6 +41,9 @@ Build a 3D room in React using Three.js, featuring a simple humanoid avatar that
 - [ ] Add text-to-speech for avatar responses
 
 ### 5. Backend (Node.js/Express)
+- [x] Set up backend directory and dependencies
+- [x] Add TypeScript config and scripts
+- [x] Create example environment file
 - [ ] Set up API endpoint to proxy chat messages to OpenAI
 - [ ] Secure endpoint with API key from environment variables
 
@@ -59,7 +63,8 @@ Build a 3D room in React using Three.js, featuring a simple humanoid avatar that
 - [ ] Add environment variable instructions for OpenAI API key
 
 ### 10. Documentation
-- [ ] Write README with setup, usage, and deployment instructions
+- [x] Write README with setup, usage, and deployment instructions
+- [x] Write PLAN.md for development roadmap and progress tracking
 
 ---
 
