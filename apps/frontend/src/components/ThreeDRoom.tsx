@@ -5,9 +5,22 @@ import Avatar from './Avatar';
 
 interface ThreeDRoomProps {
   isAvatarSpeaking?: boolean;
+  userIsTyping?: boolean;
+  lastMessageLength?: number;
+  timeSinceLastMessage?: number;
 }
 
-const Room = ({ isAvatarSpeaking = false }: { isAvatarSpeaking?: boolean }) => (
+const Room = ({ 
+  isAvatarSpeaking = false, 
+  userIsTyping = false, 
+  lastMessageLength = 0, 
+  timeSinceLastMessage = 0 
+}: { 
+  isAvatarSpeaking?: boolean; 
+  userIsTyping?: boolean; 
+  lastMessageLength?: number; 
+  timeSinceLastMessage?: number; 
+}) => (
   <>
     {/* Floor - Purple carpet */}
     <mesh receiveShadow position={[0, -0.5, 0]}>
@@ -154,15 +167,31 @@ const Room = ({ isAvatarSpeaking = false }: { isAvatarSpeaking?: boolean }) => (
     <pointLight position={[0, 4, 0]} intensity={0.5} color="#E6E6FA" />
     
     {/* Avatar - standing on the floor */}
-    <Avatar position={[0, 1.6, 0]} isSpeaking={isAvatarSpeaking} />
+    <Avatar 
+      position={[0, 1.6, 0]} 
+      isSpeaking={isAvatarSpeaking}
+      userIsTyping={userIsTyping}
+      lastMessageLength={lastMessageLength}
+      timeSinceLastMessage={timeSinceLastMessage}
+    />
   </>
 );
 
-const ThreeDRoom: React.FC<ThreeDRoomProps> = ({ isAvatarSpeaking = false }) => {
+const ThreeDRoom: React.FC<ThreeDRoomProps> = ({ 
+  isAvatarSpeaking = false,
+  userIsTyping = false,
+  lastMessageLength = 0,
+  timeSinceLastMessage = 0
+}) => {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#222' }}>
       <Canvas shadows camera={{ position: [2, 2.5, 2], fov: 60 }}>
-        <Room isAvatarSpeaking={isAvatarSpeaking} />
+        <Room 
+          isAvatarSpeaking={isAvatarSpeaking}
+          userIsTyping={userIsTyping}
+          lastMessageLength={lastMessageLength}
+          timeSinceLastMessage={timeSinceLastMessage}
+        />
         <OrbitControls 
           enablePan={false} 
           maxPolarAngle={Math.PI / 2.1}

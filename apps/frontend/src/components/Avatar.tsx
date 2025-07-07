@@ -1,10 +1,17 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { AvatarAnimationController } from '../services/avatarAnimationController';
+import type { AvatarState, MovementIntensity } from '../services/avatarAnimationController';
 
 interface AvatarProps {
   position?: [number, number, number];
   isSpeaking?: boolean;
+  conversationState?: AvatarState;
+  userIsTyping?: boolean;
+  movementIntensity?: MovementIntensity;
+  lastMessageLength?: number;
+  timeSinceLastMessage?: number;
 }
 
 // Avatar color configuration for easy customization
@@ -26,13 +33,24 @@ const GEOMETRY_CONFIG = {
 
 const Avatar: React.FC<AvatarProps> = ({ 
   position = [0, 1, 0], 
-  isSpeaking = false 
+  isSpeaking = false,
+  userIsTyping = false,
+  movementIntensity = 'moderate',
+  lastMessageLength = 0,
+  timeSinceLastMessage = 0
 }) => {
   // Refs for animated parts
   const headRef = useRef<THREE.Mesh>(null);
   const mouthRef = useRef<THREE.Mesh>(null);
   const tailRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const leftEarRef = useRef<THREE.Mesh>(null);
+  const rightEarRef = useRef<THREE.Mesh>(null);
+  const leftPawRef = useRef<THREE.Mesh>(null);
+  const rightPawRef = useRef<THREE.Mesh>(null);
+
+  // Animation controller
+  const [animationController] = useState(() => new AvatarAnimationController());
 
   // Memoize materials to prevent recreation on every render
   const materials = useMemo(() => {
@@ -118,16 +136,57 @@ const Avatar: React.FC<AvatarProps> = ({
     };
   }, [materials, geometries]);
 
-  // Optimized animation frame with better performance
+  // Update animation controller with current state
+  useEffect(() => {
+    animationController.updateState({
+      isSpeaking,
+      userIsTyping,
+      intensity: movementIntensity,
+      lastMessageLength,
+      timeSinceLastMessage
+    });
+  }, [animationController, isSpeaking, userIsTyping, movementIntensity, lastMessageLength, timeSinceLastMessage]);
+
+  // Cleanup animation controller on unmount
+  useEffect(() => {
+    return () => {
+      animationController.destroy();
+    };
+  }, [animationController]);
+
+  // Enhanced animation frame with movement patterns
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // Breathing animation - subtle head movement
+    // Update animation controller transitions
+    animationController.updateTransition();
+    
+    // Get current movement pattern
+    const pattern = animationController.getCurrentMovementPattern();
+    
+    // Apply head animations
     if (headRef.current) {
-      headRef.current.position.y = Math.sin(time * 2) * 0.02;
+      // Breathing animation
+      const breathingOffset = Math.sin(time * pattern.headBob.frequency) * pattern.headBob.amplitude * pattern.breathingIntensity;
+      headRef.current.position.y = breathingOffset;
+      
+      // Head rotation and tilt
+      headRef.current.rotation.x = pattern.headRotation.x + Math.sin(time * 0.5) * 0.02;
+      headRef.current.rotation.y = pattern.headRotation.y;
+      headRef.current.rotation.z = pattern.headTilt + Math.sin(time * 0.3) * 0.01;
     }
     
-    // Mouth animation when speaking - more realistic
+    // Apply ear animations
+    if (leftEarRef.current) {
+      const twitchOffset = Math.sin(time * pattern.earTwitch.frequency) * pattern.earTwitch.intensity;
+      leftEarRef.current.rotation.z = pattern.earRotation.left + twitchOffset;
+    }
+    if (rightEarRef.current) {
+      const twitchOffset = Math.sin(time * pattern.earTwitch.frequency + Math.PI) * pattern.earTwitch.intensity;
+      rightEarRef.current.rotation.z = -pattern.earRotation.right + twitchOffset;
+    }
+    
+    // Apply mouth animation when speaking
     if (mouthRef.current) {
       if (isSpeaking) {
         const mouthScale = 0.5 + Math.sin(time * 10) * 0.3;
@@ -142,10 +201,28 @@ const Avatar: React.FC<AvatarProps> = ({
       }
     }
     
-    // Tail wagging animation - more natural
+    // Apply tail animation
     if (tailRef.current) {
-      const wagIntensity = isSpeaking ? 0.5 : 0.3;
-      tailRef.current.rotation.z = Math.sin(time * 3) * wagIntensity;
+      const wagOffset = Math.sin(time * pattern.tailWag.frequency) * pattern.tailWag.intensity;
+      tailRef.current.rotation.z = pattern.tailPosition + wagOffset;
+    }
+    
+    // Apply body posture
+    if (groupRef.current) {
+      // Body lean
+      groupRef.current.rotation.x = pattern.bodyLean.forward * 0.1;
+      groupRef.current.rotation.y = pattern.bodyRotation;
+      groupRef.current.rotation.z = pattern.bodyLean.side * 0.05;
+    }
+    
+    // Apply paw gestures
+    if (leftPawRef.current) {
+      const gestureOffset = pattern.pawGesture === 'wave' ? Math.sin(time * 4) * 0.2 : 0;
+      leftPawRef.current.rotation.x = pattern.frontPaws.left + gestureOffset;
+    }
+    if (rightPawRef.current) {
+      const gestureOffset = pattern.pawGesture === 'point' ? Math.sin(time * 2) * 0.1 : 0;
+      rightPawRef.current.rotation.x = pattern.frontPaws.right + gestureOffset;
     }
   });
 
@@ -169,8 +246,8 @@ const Avatar: React.FC<AvatarProps> = ({
       <mesh position={[0.15, 0.1, 1.05]} geometry={geometries.pupil} material={materials.black} castShadow />
       
       {/* Ears - properly attached to head */}
-      <mesh position={[-0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
-      <mesh position={[0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      <mesh ref={leftEarRef} position={[-0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      <mesh ref={rightEarRef} position={[0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
       
       {/* Mouth */}
       <mesh ref={mouthRef} position={[0, -0.2, 1.1]} geometry={geometries.mouth} material={materials.pink} castShadow />
@@ -187,8 +264,8 @@ const Avatar: React.FC<AvatarProps> = ({
       <mesh position={[0.2, -1.2, -0.4]} geometry={geometries.leg} material={materials.primaryFur} castShadow />
       
       {/* Front paws */}
-      <mesh position={[-0.2, -1.6, 0.4]} geometry={geometries.paw} material={materials.primaryFur} castShadow />
-      <mesh position={[0.2, -1.6, 0.4]} geometry={geometries.paw} material={materials.primaryFur} castShadow />
+      <mesh ref={leftPawRef} position={[-0.2, -1.6, 0.4]} geometry={geometries.paw} material={materials.primaryFur} castShadow />
+      <mesh ref={rightPawRef} position={[0.2, -1.6, 0.4]} geometry={geometries.paw} material={materials.primaryFur} castShadow />
       
       {/* Back paws */}
       <mesh position={[-0.2, -1.6, -0.4]} geometry={geometries.paw} material={materials.primaryFur} castShadow />

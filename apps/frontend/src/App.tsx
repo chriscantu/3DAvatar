@@ -10,9 +10,17 @@ const App: React.FC = () => {
   const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [userIsTyping, setUserIsTyping] = useState(false);
+  const [lastMessageLength, setLastMessageLength] = useState(0);
+  const [lastMessageTime, setLastMessageTime] = useState(0);
 
   const handleMessageSent = useCallback((message: string) => {
     console.log('Message sent:', message);
+    // Update message tracking
+    setLastMessageLength(message.length);
+    setLastMessageTime(Date.now());
+    setUserIsTyping(false);
+    
     // This will trigger avatar speaking animation
     setIsAvatarSpeaking(true);
     
@@ -20,6 +28,10 @@ const App: React.FC = () => {
     setTimeout(() => {
       setIsAvatarSpeaking(false);
     }, 3000);
+  }, []);
+
+  const handleUserTyping = useCallback((isTyping: boolean) => {
+    setUserIsTyping(isTyping);
   }, []);
 
   const handleVoiceToggle = useCallback((isListening: boolean) => {
@@ -103,7 +115,12 @@ const App: React.FC = () => {
                 </div>
               }
             >
-              <ThreeDRoom isAvatarSpeaking={isAvatarSpeaking} />
+              <ThreeDRoom 
+                isAvatarSpeaking={isAvatarSpeaking}
+                userIsTyping={userIsTyping}
+                lastMessageLength={lastMessageLength}
+                timeSinceLastMessage={Date.now() - lastMessageTime}
+              />
             </ErrorBoundary>
           </div>
           <div className="chat-container">
@@ -125,6 +142,7 @@ const App: React.FC = () => {
               <ChatInterface
                 onMessageSent={handleMessageSent}
                 onVoiceToggle={handleVoiceToggle}
+                onUserTyping={handleUserTyping}
                 isAvatarSpeaking={isAvatarSpeaking}
               />
             </ErrorBoundary>

@@ -19,6 +19,7 @@ interface Message {
 interface ChatInterfaceProps {
   onMessageSent: (message: string) => void;
   onVoiceToggle: (isListening: boolean) => void;
+  onUserTyping?: (isTyping: boolean) => void;
   isAvatarSpeaking: boolean;
 }
 
@@ -297,6 +298,7 @@ const useChat = () => {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   onMessageSent, 
   onVoiceToggle, 
+  onUserTyping,
   isAvatarSpeaking 
 }) => {
   const [inputText, setInputText] = useState('');
@@ -474,8 +476,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Optimized input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputText(e.target.value);
-  }, []);
+    const value = e.target.value;
+    setInputText(value);
+    
+    // Notify parent about typing state
+    if (onUserTyping) {
+      onUserTyping(value.length > 0);
+    }
+  }, [onUserTyping]);
 
   // Optimized voice toggle
   const handleVoiceToggle = useCallback(() => {

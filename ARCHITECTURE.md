@@ -87,10 +87,23 @@ App.tsx (ErrorBoundary wrapped)
 │   │       │   ├── Legs (4x cylinder geometries)
 │   │       │   ├── Ears (2x sphere geometries)
 │   │       │   └── Tail (cylinder geometry)
-│   │       └── Enhanced Animations
-│   │           ├── Breathing (smooth)
-│   │           ├── Tail Wagging (context-aware)
-│   │           └── Mouth Movement (realistic)
+│   │       └── Enhanced Movement System
+│   │           ├── AvatarAnimationController
+│   │           │   ├── State Management (idle, listening, thinking, speaking, excited, curious)
+│   │           │   ├── Smooth Transitions (800ms duration with easing)
+│   │           │   ├── Intensity Modifiers (subtle, moderate, animated)
+│   │           │   └── Real-time Context Response
+│   │           ├── Movement Patterns
+│   │           │   ├── Head (rotation, tilting, breathing)
+│   │           │   ├── Ears (positioning, twitching)
+│   │           │   ├── Body (posture, leaning, rotation)
+│   │           │   ├── Tail (wagging intensity, positioning)
+│   │           │   └── Paws (gestures: pointing, waving, resting)
+│   │           └── Context-Aware Animations
+│   │               ├── Typing Detection → Listening State
+│   │               ├── Message Length → Excitement/Curiosity
+│   │               ├── Processing Time → Thinking State
+│   │               └── Speaking State → Enhanced Gestures
 │   └── OrbitControls
 ├── ChatInterface.tsx (React.memo + ErrorBoundary)
 │   ├── useChat Hook
