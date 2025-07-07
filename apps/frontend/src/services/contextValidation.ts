@@ -195,7 +195,7 @@ export class ContextValidator {
       return this.createErrorResult(new Error('Context is null or undefined'), 0);
     }
 
-    const startTime = Date.now();
+    const startTime = performance.now();
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     let checksPerformed = 0;
@@ -279,7 +279,7 @@ export class ContextValidator {
       checksPassed += customResult.summary.passedChecks;
       rulesApplied.push(...Array.from(this.rules.keys()));
 
-      const validationTime = Date.now() - startTime;
+      const validationTime = performance.now() - startTime;
       const isValid = errors.filter(e => e.severity === 'critical' || e.severity === 'high').length === 0;
       const score = this.calculateValidationScore(checksPerformed, checksPassed, errors, warnings);
 
@@ -308,7 +308,7 @@ export class ContextValidator {
       return result;
 
     } catch (error) {
-      return this.createErrorResult(error as Error, Date.now() - startTime);
+      return this.createErrorResult(error as Error, performance.now() - startTime);
     }
   }
 
@@ -605,14 +605,19 @@ export class ContextValidator {
 
     // Check message count consistency
     checks++;
-    const actualMessageCount = context.immediate.recentMessages.length;
-    const reportedMessageCount = context.session.messageCount;
-    
-    if (actualMessageCount !== reportedMessageCount) {
-      errors.push(this.createError('context.messageCount', 'consistency_error',
-        `Message count mismatch: reported ${reportedMessageCount}, actual ${actualMessageCount}`, 'high'));
+    if (context.immediate.recentMessages && Array.isArray(context.immediate.recentMessages)) {
+      const actualMessageCount = context.immediate.recentMessages.length;
+      const reportedMessageCount = context.session.messageCount;
+      
+      if (actualMessageCount !== reportedMessageCount) {
+        errors.push(this.createError('context.messageCount', 'consistency_error',
+          `Message count mismatch: reported ${reportedMessageCount}, actual ${actualMessageCount}`, 'high'));
+      } else {
+        passed++;
+      }
     } else {
-      passed++;
+      errors.push(this.createError('context.messageCount', 'consistency_error',
+        'Cannot validate message count consistency: recentMessages is not an array', 'high'));
     }
 
     // Check user profile consistency
@@ -1024,7 +1029,11 @@ export class ContextValidator {
         description: 'Address the validation system error',
         impact: 'System reliability',
         effort: 'medium'
-      }]
+      }],
+      metadata: {
+        validationTime,
+        rulesApplied: ['error_handling']
+      }
     };
   }
 
