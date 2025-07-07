@@ -125,6 +125,21 @@ export const useVoiceService = () => {
     return recognition;
   }, [isSupported]);
 
+  // Stop listening
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    setIsListening(false);
+  }, []);
+
   // Start listening
   const startListening = useCallback(() => {
     if (!isSupported) {
@@ -148,22 +163,7 @@ export const useVoiceService = () => {
       setError('Failed to start speech recognition');
       console.error('Speech recognition error:', error);
     }
-  }, [isSupported, isListening, initializeRecognition]);
-
-  // Stop listening
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    setIsListening(false);
-  }, []);
+  }, [isSupported, isListening, initializeRecognition, stopListening]);
 
   // Toggle listening
   const toggleListening = useCallback(() => {

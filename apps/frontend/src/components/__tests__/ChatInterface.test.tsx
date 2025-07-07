@@ -52,7 +52,7 @@ describe('ChatInterface Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset fetch mock
-    (globalThis as any).fetch = vi.fn();
+    (globalThis as typeof globalThis & { fetch: typeof vi.fn }).fetch = vi.fn();
   });
 
   afterEach(() => {

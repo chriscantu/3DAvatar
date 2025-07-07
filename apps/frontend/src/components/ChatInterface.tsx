@@ -315,9 +315,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     clearError,
     clearHistory,
     exportHistory,
-    contextManager,
-    currentContext,
-    contextAnalysis,
   } = useChat();
 
   const {
