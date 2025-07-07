@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -68,7 +68,7 @@ app.post('/api/chat', async (req: Request, res: Response): Promise<void> => {
     const response = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     res.json({
-      response,
+      message: response,
       timestamp: new Date().toISOString()
     });
 

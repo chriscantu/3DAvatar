@@ -21,11 +21,29 @@ const Room = ({ isAvatarSpeaking = false }: { isAvatarSpeaking?: boolean }) => (
       <boxGeometry args={[10, 4, 0.1]} />
       <meshStandardMaterial color="#E6E6FA" />
     </mesh>
-    {/* Front wall with window cutout */}
-    <mesh position={[0, 2, 5]} receiveShadow>
-      <boxGeometry args={[10, 4, 0.1]} />
+    
+    {/* Front wall with window cutout - split into sections */}
+    {/* Left section of front wall */}
+    <mesh position={[-3.75, 2, 5]} receiveShadow>
+      <boxGeometry args={[2.5, 4, 0.1]} />
       <meshStandardMaterial color="#E6E6FA" />
     </mesh>
+    {/* Right section of front wall */}
+    <mesh position={[3.75, 2, 5]} receiveShadow>
+      <boxGeometry args={[2.5, 4, 0.1]} />
+      <meshStandardMaterial color="#E6E6FA" />
+    </mesh>
+    {/* Top section of front wall (above window) */}
+    <mesh position={[0, 3.5, 5]} receiveShadow>
+      <boxGeometry args={[2.5, 1, 0.1]} />
+      <meshStandardMaterial color="#E6E6FA" />
+    </mesh>
+    {/* Bottom section of front wall (below window) */}
+    <mesh position={[0, 0.5, 5]} receiveShadow>
+      <boxGeometry args={[2.5, 1, 0.1]} />
+      <meshStandardMaterial color="#E6E6FA" />
+    </mesh>
+    
     {/* Left wall */}
     <mesh position={[-5, 2, 0]} receiveShadow>
       <boxGeometry args={[0.1, 4, 10]} />
@@ -52,70 +70,80 @@ const Room = ({ isAvatarSpeaking = false }: { isAvatarSpeaking?: boolean }) => (
     {/* Window glass */}
     <mesh position={[0, 2, 5.13]} receiveShadow>
       <boxGeometry args={[2.1, 1.6, 0.02]} />
-      <meshStandardMaterial color="#87CEEB" transparent opacity={0.7} />
+      <meshStandardMaterial color="#87CEEB" transparent opacity={0.3} />
     </mesh>
     
-    {/* Bed */}
-    <mesh position={[-3, 0.5, -2]} receiveShadow>
-      <boxGeometry args={[2.5, 1, 3]} />
+    {/* Window cross bars */}
+    <mesh position={[0, 2, 5.14]}>
+      <boxGeometry args={[0.05, 1.8, 0.02]} />
+      <meshStandardMaterial color="#2F4F4F" />
+    </mesh>
+    <mesh position={[0, 2, 5.14]}>
+      <boxGeometry args={[2.1, 0.05, 0.02]} />
+      <meshStandardMaterial color="#2F4F4F" />
+    </mesh>
+    
+    {/* Bed - positioned against left wall */}
+    <mesh position={[-3.5, 0.5, -2]} receiveShadow>
+      <boxGeometry args={[2, 1, 3]} />
       <meshStandardMaterial color="#FF69B4" />
     </mesh>
     
     {/* Bed pillow */}
-    <mesh position={[-3, 1.2, -0.5]} receiveShadow>
-      <boxGeometry args={[2, 0.3, 0.8]} />
+    <mesh position={[-3.5, 1.15, -0.8]} receiveShadow>
+      <boxGeometry args={[1.8, 0.3, 0.8]} />
       <meshStandardMaterial color="#FFF0F5" />
     </mesh>
     
-    {/* Rug with paw print pattern */}
+    {/* Rug with paw print pattern - centered in room */}
     <mesh position={[0, 0.01, 0]} receiveShadow>
       <cylinderGeometry args={[1.5, 1.5, 0.1, 32]} />
       <meshStandardMaterial color="#DDA0DD" />
     </mesh>
     
-    {/* Posters */}
-    {/* Inuyasha Poster */}
-    <mesh position={[-4.95, 2.5, -2]} receiveShadow>
+    {/* Posters - flush with walls */}
+    {/* Inuyasha Poster - on left wall */}
+    <mesh position={[-4.99, 2.5, -2]} receiveShadow rotation={[0, Math.PI/2, 0]}>
       <planeGeometry args={[1.5, 2]} />
       <meshStandardMaterial color="#FF6B6B" />
     </mesh>
     
-    {/* Pokemon Poster */}
-    <mesh position={[4.95, 2.5, 2]} receiveShadow>
+    {/* Pokemon Poster - on right wall */}
+    <mesh position={[4.99, 2.5, 2]} receiveShadow rotation={[0, -Math.PI/2, 0]}>
       <planeGeometry args={[1.5, 2]} />
       <meshStandardMaterial color="#4ECDC4" />
     </mesh>
     
-    {/* Dogs Poster */}
-    <mesh position={[0, 2.5, -4.95]} receiveShadow>
+    {/* Dogs Poster - on back wall */}
+    <mesh position={[0, 2.5, -4.99]} receiveShadow>
       <planeGeometry args={[2, 1.5]} />
       <meshStandardMaterial color="#FFE66D" />
     </mesh>
     
-    {/* Small desk */}
-    <mesh position={[3, 0.5, -3]} receiveShadow>
+    {/* Small desk - positioned against right wall */}
+    <mesh position={[3.5, 0.5, -3]} receiveShadow>
       <boxGeometry args={[1.5, 1, 0.8]} />
       <meshStandardMaterial color="#8B4513" />
     </mesh>
     
-    {/* Trophy on desk */}
-    <mesh position={[3, 1.2, -3]} receiveShadow>
+    {/* Trophy on desk - properly centered */}
+    <mesh position={[3.5, 1.15, -3]} receiveShadow>
       <cylinderGeometry args={[0.1, 0.1, 0.3, 8]} />
       <meshStandardMaterial color="#FFD700" />
     </mesh>
     
-    {/* Dog plushie on bed */}
-    <mesh position={[-3, 1.5, -1]} receiveShadow>
+    {/* Dog plushie on bed - properly positioned */}
+    <mesh position={[-3.5, 1.3, -1]} receiveShadow>
       <sphereGeometry args={[0.3, 16, 16]} />
       <meshStandardMaterial color="#8B4513" />
     </mesh>
     
-    {/* Plushie ears */}
-    <mesh position={[-3, 1.8, -1]} receiveShadow>
+    {/* Plushie ears - properly aligned */}
+    <mesh position={[-3.5, 1.6, -1]} receiveShadow>
       <sphereGeometry args={[0.1, 8, 8]} />
       <meshStandardMaterial color="#8B4513" />
     </mesh>
-    <mesh position={[-2.8, 1.8, -1]} receiveShadow>
+    <mesh position={[-3.3, 1.6, -1]} receiveShadow>
       <sphereGeometry args={[0.1, 8, 8]} />
       <meshStandardMaterial color="#8B4513" />
     </mesh>
@@ -125,17 +153,23 @@ const Room = ({ isAvatarSpeaking = false }: { isAvatarSpeaking?: boolean }) => (
     <directionalLight position={[5, 10, 7.5]} intensity={0.8} castShadow />
     <pointLight position={[0, 4, 0]} intensity={0.5} color="#E6E6FA" />
     
-    {/* Avatar */}
-    <Avatar position={[0, 1.5, 0]} isSpeaking={isAvatarSpeaking} />
+    {/* Avatar - standing on the floor */}
+    <Avatar position={[0, 1.6, 0]} isSpeaking={isAvatarSpeaking} />
   </>
 );
 
 const ThreeDRoom: React.FC<ThreeDRoomProps> = ({ isAvatarSpeaking = false }) => {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#222' }}>
-      <Canvas shadows camera={{ position: [0, 3, 12], fov: 50 }}>
+      <Canvas shadows camera={{ position: [2, 2.5, 2], fov: 60 }}>
         <Room isAvatarSpeaking={isAvatarSpeaking} />
-        <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 2.1} />
+        <OrbitControls 
+          enablePan={false} 
+          maxPolarAngle={Math.PI / 2.1}
+          target={[0, 1, 0]}
+          minDistance={3}
+          maxDistance={8}
+        />
       </Canvas>
     </div>
   );

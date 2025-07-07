@@ -233,6 +233,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         sender: 'assistant',
       });
 
+      // Speak the response using text-to-speech
+      try {
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(response.message);
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.volume = 0.8;
+          utterance.lang = 'en-US';
+          
+          speechSynthesis.speak(utterance);
+        }
+      } catch (speechError) {
+        console.error('Text-to-speech error:', speechError);
+      }
+
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -262,7 +277,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setIsTyping(false);
       abortControllerRef.current = null;
     }
-  }, [addMessage, clearError, onMessageSent]);
+  }, [addMessage, clearError, onMessageSent, setError, setIsTyping]);
 
   // Optimized form submission
   const handleSubmit = useCallback((e: React.FormEvent) => {
