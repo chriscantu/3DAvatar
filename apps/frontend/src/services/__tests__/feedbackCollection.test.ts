@@ -376,8 +376,8 @@ describe('FeedbackCollector Service', () => {
       if (recommendations.length > 1) {
         // Should be sorted by priority (high to low)
         for (let i = 0; i < recommendations.length - 1; i++) {
-          const currentPriority = recommendations[i].priority === 'high' ? 3 : recommendations[i].priority === 'medium' ? 2 : 1;
-          const nextPriority = recommendations[i + 1].priority === 'high' ? 3 : recommendations[i + 1].priority === 'medium' ? 2 : 1;
+          const currentPriority = recommendations[i].priority === 'critical' ? 4 : recommendations[i].priority === 'high' ? 3 : recommendations[i].priority === 'medium' ? 2 : 1;
+          const nextPriority = recommendations[i + 1].priority === 'critical' ? 4 : recommendations[i + 1].priority === 'high' ? 3 : recommendations[i + 1].priority === 'medium' ? 2 : 1;
           expect(currentPriority).toBeGreaterThanOrEqual(nextPriority);
         }
       }
