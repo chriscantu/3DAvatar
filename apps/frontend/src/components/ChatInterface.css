@@ -7,6 +7,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .chat-header {
@@ -34,8 +35,9 @@
 
 .chat-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .chat-stats {
@@ -45,11 +47,12 @@
 }
 
 .message-count {
-  font-size: 12px;
+  font-size: 14px;
   background: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   opacity: 0.8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .chat-actions {
@@ -150,22 +153,24 @@
   background: linear-gradient(135deg, #f8f4ff 0%, #e8d5ff 100%);
   border-radius: 16px;
   border: 2px dashed rgba(139, 69, 19, 0.3);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 18px;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .history-indicator {
   text-align: center;
   color: #28a745;
   font-style: italic;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
   border-radius: 12px;
   border: 1px solid rgba(40, 167, 69, 0.2);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
   margin-bottom: 16px;
   opacity: 0.9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .message {
@@ -183,7 +188,7 @@
 
 .message-content {
   max-width: 75%;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-radius: 18px;
   position: relative;
   word-wrap: break-word;
@@ -206,14 +211,15 @@
 
 .message-text {
   margin: 0;
-  line-height: 1.6;
-  font-size: 16px;
+  line-height: 1.7;
+  font-size: 18px;
   font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .message-line {
-  margin-bottom: 8px;
-  min-height: 1.3em;
+  margin-bottom: 10px;
+  min-height: 1.4em;
 }
 
 .message-line:last-child {
@@ -221,27 +227,30 @@
 }
 
 .message-line:empty {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .avatar-message .message-text {
-  font-size: 16px;
+  font-size: 18px;
   color: #2c3e50;
   font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .user-message .message-text {
   color: white;
   font-weight: 400;
-  font-size: 16px;
+  font-size: 18px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .message-time {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.65;
   text-align: right;
   margin-top: 4px;
   font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .avatar-message .message-time {
@@ -297,15 +306,15 @@
 
 .message-input {
   flex: 1;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border: 2px solid rgba(139, 69, 19, 0.2);
   border-radius: 25px;
   outline: none;
-  font-size: 16px;
+  font-size: 18px;
   background: white;
   transition: all 0.3s ease;
-  line-height: 1.4;
-  font-family: inherit;
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .message-input:focus {
@@ -388,8 +397,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .status-indicator {
@@ -424,17 +434,18 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   margin: 10px 20px;
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
   border: 1px solid #fecaca;
   border-radius: 12px;
   color: #dc2626;
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 17px;
+  line-height: 1.5;
   font-weight: 500;
   animation: slideIn 0.3s ease;
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .error-icon {
@@ -517,9 +528,10 @@
 }
 
 .typing-text {
-  font-size: 14px;
+  font-size: 16px;
   color: #666;
   font-style: italic;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 /* Accessibility improvements */
