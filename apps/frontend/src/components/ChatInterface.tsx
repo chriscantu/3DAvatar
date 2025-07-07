@@ -1,6 +1,9 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { apiService, ApiError, NetworkError, TimeoutError } from '../config/api';
 import { useVoiceService } from '../services/voiceService';
+import { createContextManager } from '../services/contextManager';
+import type { Context, ContextAnalysis } from '../types/context';
+import type { ChatMessage } from '../types/common';
 import './ChatInterface.css';
 
 // Types for better type safety
@@ -19,14 +22,15 @@ interface ChatInterfaceProps {
   isAvatarSpeaking: boolean;
 }
 
-// Memoized Message component for better performance
-const Message = React.memo<{ message: Message }>(({ message }) => {
+// Enhanced Message component with context awareness
+const Message = React.memo<{ message: Message; emotion?: string; analysisData?: ContextAnalysis }>(({ message, emotion, analysisData }) => {
   const messageClass = useMemo(() => {
     const baseClass = 'message';
     const senderClass = message.sender === 'user' ? 'user' : 'assistant';
     const errorClass = message.error ? 'error' : '';
-    return `${baseClass} ${senderClass} ${errorClass}`.trim();
-  }, [message.sender, message.error]);
+    const emotionClass = emotion ? `emotion-${emotion}` : '';
+    return `${baseClass} ${senderClass} ${errorClass} ${emotionClass}`.trim();
+  }, [message.sender, message.error, emotion]);
 
   const formattedTime = useMemo(() => {
     return new Date(message.timestamp).toLocaleTimeString([], { 
@@ -56,6 +60,12 @@ const Message = React.memo<{ message: Message }>(({ message }) => {
                 {line}
               </div>
             ))}
+          </div>
+        )}
+        {/* Context analysis indicator for development */}
+        {analysisData && process.env.NODE_ENV === 'development' && (
+          <div className="context-analysis" title={`Relevance: ${analysisData.relevanceScore.toFixed(2)}, Emotion: ${analysisData.emotionalTone.primary}`}>
+            <span className="analysis-indicator">🧠</span>
           </div>
         )}
       </div>
@@ -165,11 +175,14 @@ const chatStorage = {
   },
 };
 
-// Custom hook for chat state management with persistence
+// Enhanced chat hook with context management
 const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contextManager] = useState(() => createContextManager());
+  const [currentContext, setCurrentContext] = useState<Context | null>(null);
+  const [contextAnalysis, setContextAnalysis] = useState<ContextAnalysis | null>(null);
 
   // Load chat history on component mount
   useEffect(() => {
@@ -186,6 +199,40 @@ const useChat = () => {
       chatStorage.saveMessages(messages);
     }
   }, [messages]);
+
+  // Process messages through context system
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      // Convert to ChatMessage format for context processing
+      const chatMessage: ChatMessage = {
+        id: lastMessage.id,
+        content: lastMessage.content,
+        timestamp: lastMessage.timestamp,
+        sender: lastMessage.sender,
+        isTyping: lastMessage.isTyping,
+        error: lastMessage.error
+      };
+
+      // Process through context manager
+      contextManager.processMessage(chatMessage).then(context => {
+        setCurrentContext(context);
+        
+        // Analyze context for insights
+        const analysis = contextManager.analyzeContext(context);
+        setContextAnalysis(analysis);
+        
+        console.log('Context updated:', {
+          emotion: context.immediate.currentUserEmotion,
+          topics: context.immediate.activeTopics,
+          relevance: analysis.relevanceScore
+        });
+      }).catch(error => {
+        console.error('Context processing error:', error);
+      });
+    }
+  }, [messages, contextManager]);
   
   const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
     const newMessage: Message = {
@@ -203,8 +250,9 @@ const useChat = () => {
   const clearHistory = useCallback(() => {
     setMessages([]);
     chatStorage.clearHistory();
+    contextManager.clearSession(true); // Clear session but preserve user profile
     console.log('Chat history cleared');
-  }, []);
+  }, [contextManager]);
 
   const exportHistory = useCallback(() => {
     chatStorage.exportHistory(messages);
@@ -240,6 +288,9 @@ const useChat = () => {
     exportHistory,
     getStats,
     searchMessages,
+    contextManager,
+    currentContext,
+    contextAnalysis,
   };
 };
 
@@ -264,6 +315,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     clearError,
     clearHistory,
     exportHistory,
+    contextManager,
+    currentContext,
+    contextAnalysis,
   } = useChat();
 
   const {
