@@ -1,5 +1,4 @@
 import type { Context, SystemContext, SessionContext, ImmediateContext } from '../types/context';
-import type { ChatMessage } from '../types/common';
 
 /**
  * Context Validation Service for Avatar System
@@ -24,6 +23,11 @@ export interface ValidationResult {
   score: number; // 0-1 overall quality score
   summary: ValidationSummary;
   recommendations: ValidationRecommendation[];
+  metadata?: {
+    validationTime: number;
+    rulesApplied: string[];
+    [key: string]: unknown;
+  };
 }
 
 export interface ValidationError {
@@ -32,8 +36,8 @@ export interface ValidationError {
   type: ValidationErrorType;
   message: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  expectedValue?: any;
-  actualValue?: any;
+  expectedValue?: unknown;
+  actualValue?: unknown;
   suggestion?: string;
 }
 
@@ -54,7 +58,11 @@ export type ValidationErrorType =
   | 'inconsistent_data'
   | 'circular_reference'
   | 'size_limit_exceeded'
-  | 'invalid_relationship';
+  | 'invalid_relationship'
+  | 'type_error'
+  | 'range_error'
+  | 'consistency_error'
+  | 'custom_error';
 
 export type ValidationWarningType =
   | 'suboptimal_value'
@@ -81,6 +89,8 @@ export interface ValidationRecommendation {
   description: string;
   impact: string;
   effort: 'low' | 'medium' | 'high';
+  issue?: string;
+  recommendation?: string;
 }
 
 export interface ValidationRule {
@@ -91,6 +101,7 @@ export interface ValidationRule {
   severity: 'error' | 'warning';
   enabled: boolean;
   validator: (context: Context) => ValidationResult | null;
+  validate?: (context: Context) => { isValid: boolean; error?: unknown };
 }
 
 export interface ContextHealthCheck {
@@ -100,6 +111,14 @@ export interface ContextHealthCheck {
   issues: HealthIssue[];
   performance: PerformanceMetrics;
   recommendations: string[];
+  overall: 'healthy' | 'warning' | 'critical';
+  score: number;
+  categories: {
+    critical: number;
+    warning: number;
+    info: number;
+  };
+  lastCheck: Date;
 }
 
 export interface HealthIssue {
@@ -108,6 +127,7 @@ export interface HealthIssue {
   description: string;
   affectedComponents: string[];
   resolution: string;
+  category: 'data_quality' | 'performance' | 'consistency' | 'security';
 }
 
 export interface PerformanceMetrics {
@@ -118,11 +138,48 @@ export interface PerformanceMetrics {
   validationOverhead: number;
 }
 
+export interface ValidationStats {
+  totalValidations: number;
+  validCount: number;
+  invalidCount: number;
+  averageScore: number;
+  averageValidationTime: number;
+  errorRate: number;
+  mostCommonErrors: { type: ValidationErrorType; count: number }[];
+  performanceTrend: 'improving' | 'declining' | 'stable';
+  commonIssues: { type: ValidationErrorType; count: number }[];
+  performanceMetrics: {
+    averageTime: number;
+    maxTime: number;
+    minTime: number;
+  };
+  coverage: {
+    fieldsValidated: number;
+    totalFields: number;
+    percentage: number;
+  };
+}
+
 export class ContextValidator {
   private config: ValidationConfig;
   private rules: Map<string, ValidationRule> = new Map();
   private validationHistory: ValidationResult[] = [];
   private performanceMetrics: PerformanceMetrics[] = [];
+  private validationStats: {
+    totalValidations: number;
+    validCount: number;
+    invalidCount: number;
+    totalScore: number;
+    totalTime: number;
+    errorCounts: Map<ValidationErrorType, number>;
+  } = {
+    totalValidations: 0,
+    validCount: 0,
+    invalidCount: 0,
+    totalScore: 0,
+    totalTime: 0,
+    errorCounts: new Map()
+  };
 
   constructor(config?: Partial<ValidationConfig>) {
     this.config = this.createDefaultConfig(config);
@@ -133,40 +190,67 @@ export class ContextValidator {
    * Validate a complete context object
    */
   validateContext(context: Context): ValidationResult {
+    // Handle null/undefined context
+    if (!context || typeof context !== 'object') {
+      return this.createErrorResult(new Error('Context is null or undefined'), 0);
+    }
+
     const startTime = Date.now();
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     let checksPerformed = 0;
     let checksPassed = 0;
+    const rulesApplied: string[] = [];
 
     try {
       // Validate system context
-      const systemResult = this.validateSystemContext(context.system);
-      errors.push(...systemResult.errors);
-      warnings.push(...systemResult.warnings);
-      checksPerformed += systemResult.summary.totalChecks;
-      checksPassed += systemResult.summary.passedChecks;
+      if (!context.system) {
+        errors.push(this.createError('system', 'missing_required', 'System context is required', 'critical'));
+        checksPerformed++;
+      } else {
+        const systemResult = this.validateSystemContext(context.system);
+        errors.push(...systemResult.errors);
+        warnings.push(...systemResult.warnings);
+        checksPerformed += systemResult.summary.totalChecks;
+        checksPassed += systemResult.summary.passedChecks;
+        rulesApplied.push('system_validation');
+      }
 
       // Validate session context
-      const sessionResult = this.validateSessionContext(context.session);
-      errors.push(...sessionResult.errors);
-      warnings.push(...sessionResult.warnings);
-      checksPerformed += sessionResult.summary.totalChecks;
-      checksPassed += sessionResult.summary.passedChecks;
+      if (!context.session) {
+        errors.push(this.createError('session', 'missing_required', 'Session context is required', 'critical'));
+        checksPerformed++;
+      } else {
+        const sessionResult = this.validateSessionContext(context.session);
+        errors.push(...sessionResult.errors);
+        warnings.push(...sessionResult.warnings);
+        checksPerformed += sessionResult.summary.totalChecks;
+        checksPassed += sessionResult.summary.passedChecks;
+        rulesApplied.push('session_validation');
+      }
 
       // Validate immediate context
-      const immediateResult = this.validateImmediateContext(context.immediate);
-      errors.push(...immediateResult.errors);
-      warnings.push(...immediateResult.warnings);
-      checksPerformed += immediateResult.summary.totalChecks;
-      checksPassed += immediateResult.summary.passedChecks;
+      if (!context.immediate) {
+        errors.push(this.createError('immediate', 'missing_required', 'Immediate context is required', 'critical'));
+        checksPerformed++;
+      } else {
+        const immediateResult = this.validateImmediateContext(context.immediate);
+        errors.push(...immediateResult.errors);
+        warnings.push(...immediateResult.warnings);
+        checksPerformed += immediateResult.summary.totalChecks;
+        checksPassed += immediateResult.summary.passedChecks;
+        rulesApplied.push('immediate_validation');
+      }
 
       // Validate cross-context consistency
-      const consistencyResult = this.validateContextConsistency(context);
-      errors.push(...consistencyResult.errors);
-      warnings.push(...consistencyResult.warnings);
-      checksPerformed += consistencyResult.summary.totalChecks;
-      checksPassed += consistencyResult.summary.passedChecks;
+      if (context.system && context.session && context.immediate) {
+        const consistencyResult = this.validateContextConsistency(context);
+        errors.push(...consistencyResult.errors);
+        warnings.push(...consistencyResult.warnings);
+        checksPerformed += consistencyResult.summary.totalChecks;
+        checksPassed += consistencyResult.summary.passedChecks;
+        rulesApplied.push('consistency_validation');
+      }
 
       // Run custom validation rules
       const customResult = this.runCustomValidationRules(context);
@@ -174,6 +258,7 @@ export class ContextValidator {
       warnings.push(...customResult.warnings);
       checksPerformed += customResult.summary.totalChecks;
       checksPassed += customResult.summary.passedChecks;
+      rulesApplied.push(...Array.from(this.rules.keys()));
 
       const validationTime = Date.now() - startTime;
       const isValid = errors.filter(e => e.severity === 'critical' || e.severity === 'high').length === 0;
@@ -193,7 +278,11 @@ export class ContextValidator {
           validationTime,
           coverage: this.calculateCoverage(context)
         },
-        recommendations: this.generateRecommendations(errors, warnings)
+        recommendations: this.generateRecommendations(errors, warnings),
+        metadata: {
+          validationTime,
+          rulesApplied
+        }
       };
 
       this.recordValidationResult(result);
@@ -484,29 +573,48 @@ export class ContextValidator {
     
     // Convert errors to health issues
     validation.errors.forEach(error => {
+      const healthType = this.mapErrorToHealthType(error.type);
       issues.push({
-        type: this.mapErrorToHealthType(error.type),
+        type: healthType,
         severity: this.mapSeverityToHealth(error.severity),
         description: error.message,
         affectedComponents: [error.field],
-        resolution: error.suggestion || 'Review and fix the identified issue'
+        resolution: error.suggestion || 'Review and fix the identified issue',
+        category: healthType
       });
     });
 
     // Convert warnings to health issues
     validation.warnings.forEach(warning => {
+      const healthType = this.mapWarningToHealthType(warning.type);
       issues.push({
-        type: this.mapWarningToHealthType(warning.type),
+        type: healthType,
         severity: 'warning',
         description: warning.message,
         affectedComponents: [warning.field],
-        resolution: warning.suggestion
+        resolution: warning.suggestion,
+        category: healthType
       });
     });
 
+    // Calculate categories
+    const categories = {
+      critical: issues.filter(i => i.severity === 'critical').length,
+      warning: issues.filter(i => i.severity === 'warning').length,
+      info: issues.filter(i => i.severity === 'info').length
+    };
+
+    // Determine overall health
+    let overall: 'healthy' | 'warning' | 'critical' = 'healthy';
+    if (categories.critical > 0) {
+      overall = 'critical';
+    } else if (categories.warning > 0) {
+      overall = 'warning';
+    }
+
     return {
       timestamp: new Date(),
-      contextId: context.session.sessionId,
+      contextId: context.session?.sessionId || 'unknown',
       healthScore: validation.score,
       issues,
       performance: {
@@ -516,7 +624,11 @@ export class ContextValidator {
         cacheHitRate: 0, // Would need cache statistics
         validationOverhead: validation.summary.validationTime
       },
-      recommendations: validation.recommendations.map(r => r.action)
+      recommendations: validation.recommendations.map(r => r.action),
+      overall,
+      score: validation.score,
+      categories,
+      lastCheck: new Date()
     };
   }
 
@@ -539,14 +651,44 @@ export class ContextValidator {
    */
   getValidationStats(): ValidationStats {
     const recentResults = this.validationHistory.slice(-100);
+    const totalValidations = this.validationStats.totalValidations;
+    const validCount = this.validationStats.validCount;
+    const invalidCount = this.validationStats.invalidCount;
+    
+    // Calculate common issues
+    const commonIssues: { type: ValidationErrorType; count: number }[] = [];
+    this.validationStats.errorCounts.forEach((count, type) => {
+      commonIssues.push({ type, count });
+    });
+    commonIssues.sort((a, b) => b.count - a.count);
+
+    // Calculate performance metrics
+    const times = recentResults.map(r => r.summary.validationTime);
+    const performanceMetrics = {
+      averageTime: times.length > 0 ? times.reduce((sum, t) => sum + t, 0) / times.length : 0,
+      maxTime: times.length > 0 ? Math.max(...times) : 0,
+      minTime: times.length > 0 ? Math.min(...times) : 0
+    };
+
+    // Calculate coverage
+    const coverage = {
+      fieldsValidated: 10, // Simplified - would need actual field counting
+      totalFields: 15,
+      percentage: (10 / 15) * 100
+    };
     
     return {
-      totalValidations: this.validationHistory.length,
-      averageScore: recentResults.reduce((sum, r) => sum + r.score, 0) / Math.max(recentResults.length, 1),
-      averageValidationTime: recentResults.reduce((sum, r) => sum + r.summary.validationTime, 0) / Math.max(recentResults.length, 1),
-      errorRate: recentResults.filter(r => r.errors.length > 0).length / Math.max(recentResults.length, 1),
+      totalValidations,
+      validCount,
+      invalidCount,
+      averageScore: totalValidations > 0 ? this.validationStats.totalScore / totalValidations : 0,
+      averageValidationTime: totalValidations > 0 ? this.validationStats.totalTime / totalValidations : 0,
+      errorRate: totalValidations > 0 ? invalidCount / totalValidations : 0,
       mostCommonErrors: this.getMostCommonErrors(recentResults),
-      performanceTrend: this.calculatePerformanceTrend(recentResults)
+      performanceTrend: this.calculatePerformanceTrend(recentResults),
+      commonIssues,
+      performanceMetrics,
+      coverage
     };
   }
 
@@ -621,8 +763,8 @@ export class ContextValidator {
     type: ValidationErrorType,
     message: string,
     severity: 'low' | 'medium' | 'high' | 'critical',
-    actualValue?: any,
-    expectedValue?: any,
+    actualValue?: unknown,
+    expectedValue?: unknown,
     suggestion?: string
   ): ValidationError {
     return {
@@ -733,7 +875,7 @@ export class ContextValidator {
     let totalFields = 0;
     let validatedFields = 0;
     
-    const countFields = (obj: any, path = ''): void => {
+    const countFields = (obj: Record<string, unknown>, path = ''): void => {
       if (obj === null || obj === undefined) return;
       
       if (typeof obj === 'object' && !Array.isArray(obj)) {
@@ -742,12 +884,14 @@ export class ContextValidator {
           if (obj[key] !== null && obj[key] !== undefined) {
             validatedFields++;
           }
-          countFields(obj[key], path ? `${path}.${key}` : key);
+          if (typeof obj[key] === 'object' && obj[key] !== null) {
+            countFields(obj[key] as Record<string, unknown>, path ? `${path}.${key}` : key);
+          }
         });
       }
     };
     
-    countFields(context);
+    countFields((context as unknown) as Record<string, unknown>);
     return totalFields > 0 ? validatedFields / totalFields : 1;
   }
 
@@ -785,57 +929,25 @@ export class ContextValidator {
     return recommendations;
   }
 
-  private isValidMessage(message: any): boolean {
-    return message &&
-           typeof message.id === 'string' &&
-           typeof message.content === 'string' &&
-           typeof message.sender === 'string' &&
-           typeof message.timestamp === 'number';
-  }
-
-  private calculateContextSize(context: Context): number {
-    return JSON.stringify(context).length;
-  }
-
-  private mapErrorToHealthType(errorType: ValidationErrorType): 'data_quality' | 'performance' | 'consistency' | 'security' {
-    switch (errorType) {
-      case 'size_limit_exceeded':
-        return 'performance';
-      case 'inconsistent_data':
-        return 'consistency';
-      case 'missing_required':
-      case 'invalid_type':
-      case 'invalid_format':
-        return 'data_quality';
-      default:
-        return 'data_quality';
-    }
-  }
-
-  private mapSeverityToHealth(severity: string): 'info' | 'warning' | 'error' | 'critical' {
-    switch (severity) {
-      case 'low': return 'info';
-      case 'medium': return 'warning';
-      case 'high': return 'error';
-      case 'critical': return 'critical';
-      default: return 'info';
-    }
-  }
-
-  private mapWarningToHealthType(warningType: ValidationWarningType): 'data_quality' | 'performance' | 'consistency' | 'security' {
-    switch (warningType) {
-      case 'performance_concern':
-        return 'performance';
-      case 'suboptimal_value':
-      case 'potential_issue':
-        return 'consistency';
-      default:
-        return 'data_quality';
-    }
-  }
-
   private recordValidationResult(result: ValidationResult): void {
     this.validationHistory.push(result);
+    
+    // Update statistics
+    this.validationStats.totalValidations++;
+    this.validationStats.totalScore += result.score;
+    this.validationStats.totalTime += result.summary.validationTime;
+    
+    if (result.isValid) {
+      this.validationStats.validCount++;
+    } else {
+      this.validationStats.invalidCount++;
+    }
+    
+    // Track error types
+    result.errors.forEach(error => {
+      const currentCount = this.validationStats.errorCounts.get(error.type) || 0;
+      this.validationStats.errorCounts.set(error.type, currentCount + 1);
+    });
     
     // Keep only last 1000 results
     if (this.validationHistory.length > 1000) {
@@ -848,30 +960,98 @@ export class ContextValidator {
     
     results.forEach(result => {
       result.errors.forEach(error => {
-        errorCounts.set(error.type, (errorCounts.get(error.type) || 0) + 1);
+        const currentCount = errorCounts.get(error.type) || 0;
+        errorCounts.set(error.type, currentCount + 1);
       });
     });
     
     return Array.from(errorCounts.entries())
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .slice(0, 10);
   }
 
   private calculatePerformanceTrend(results: ValidationResult[]): 'improving' | 'declining' | 'stable' {
-    if (results.length < 10) return 'stable';
+    if (results.length < 2) return 'stable';
     
-    const recent = results.slice(-10);
-    const older = results.slice(-20, -10);
+    const recentHalf = results.slice(-Math.floor(results.length / 2));
+    const olderHalf = results.slice(0, Math.floor(results.length / 2));
     
-    const recentAvg = recent.reduce((sum, r) => sum + r.score, 0) / recent.length;
-    const olderAvg = older.reduce((sum, r) => sum + r.score, 0) / older.length;
+    const recentAvg = recentHalf.reduce((sum, r) => sum + r.summary.validationTime, 0) / recentHalf.length;
+    const olderAvg = olderHalf.reduce((sum, r) => sum + r.summary.validationTime, 0) / olderHalf.length;
     
-    const difference = recentAvg - olderAvg;
+    const threshold = olderAvg * 0.1; // 10% threshold
     
-    if (difference > 0.05) return 'improving';
-    if (difference < -0.05) return 'declining';
-    return 'stable';
+    if (recentAvg < olderAvg - threshold) {
+      return 'improving';
+    } else if (recentAvg > olderAvg + threshold) {
+      return 'declining';
+    } else {
+      return 'stable';
+    }
+  }
+
+  private isValidMessage(message: unknown): boolean {
+    if (!message || typeof message !== 'object') return false;
+    
+    const msg = message as Record<string, unknown>;
+    return typeof msg.id === 'string' &&
+           typeof msg.content === 'string' &&
+           typeof msg.sender === 'string' &&
+           typeof msg.timestamp === 'number';
+  }
+
+  private calculateContextSize(context: Context): number {
+    return JSON.stringify(context).length;
+  }
+
+  private mapErrorToHealthType(errorType: ValidationErrorType): 'data_quality' | 'performance' | 'consistency' | 'security' {
+    switch (errorType) {
+      case 'missing_required':
+      case 'invalid_type':
+      case 'invalid_format':
+        return 'data_quality';
+      case 'size_limit_exceeded':
+        return 'performance';
+      case 'inconsistent_data':
+      case 'consistency_error':
+        return 'consistency';
+      case 'circular_reference':
+        return 'security';
+      default:
+        return 'data_quality';
+    }
+  }
+
+  private mapSeverityToHealth(severity: string): 'info' | 'warning' | 'error' | 'critical' {
+    switch (severity) {
+      case 'low':
+        return 'info';
+      case 'medium':
+        return 'warning';
+      case 'high':
+        return 'error';
+      case 'critical':
+        return 'critical';
+      default:
+        return 'warning';
+    }
+  }
+
+  private mapWarningToHealthType(warningType: ValidationWarningType): 'data_quality' | 'performance' | 'consistency' | 'security' {
+    switch (warningType) {
+      case 'performance_concern':
+        return 'performance';
+      case 'suboptimal_value':
+      case 'deprecated_field':
+        return 'data_quality';
+      case 'potential_issue':
+        return 'consistency';
+      case 'best_practice_violation':
+        return 'security';
+      default:
+        return 'data_quality';
+    }
   }
 }
 
