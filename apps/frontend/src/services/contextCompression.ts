@@ -1,5 +1,5 @@
 import type { ChatMessage } from '../types/common';
-import type { Context, SignificantInteraction, ConversationTheme } from '../types/context';
+import type { Context } from '../types/context';
 
 /**
  * Context Compression Service for Avatar System
@@ -139,9 +139,13 @@ export class ContextCompressor {
   }
 
   /**
-   * Create a comprehensive conversation summary
+   * Summarize conversation messages into a coherent summary
    */
-  summarizeConversation(messages: ChatMessage[], timespan?: { start: Date; end: Date }): ConversationSummary {
+  summarizeConversation(messages: ChatMessage[]): ConversationSummary {
+    if (messages.length === 0) {
+      return this.createEmptyConversationSummary();
+    }
+
     const id = this.generateSummaryId(messages);
     const cached = this.summaryCache.get(id);
     
@@ -151,7 +155,7 @@ export class ContextCompressor {
 
     const summary: ConversationSummary = {
       id,
-      timespan: timespan || this.calculateTimespan(messages),
+      timespan: this.calculateTimespan(messages),
       participantCount: this.countParticipants(messages),
       messageCount: messages.length,
       summary: this.generateConversationSummary(messages),
@@ -164,6 +168,13 @@ export class ContextCompressor {
 
     this.summaryCache.set(id, summary);
     return summary;
+  }
+
+  /**
+   * Score the importance of a message for compression decisions
+   */
+  scoreMessageImportance(message: ChatMessage): number {
+    return this.calculateMessageImportance(message, [message]);
   }
 
   /**
@@ -206,6 +217,32 @@ export class ContextCompressor {
       retentionPeriod: config?.retentionPeriod ?? 20,
       compressionThreshold: config?.compressionThreshold ?? 3000,
       qualityThreshold: config?.qualityThreshold ?? 0.7
+    };
+  }
+
+  private createEmptyConversationSummary(): ConversationSummary {
+    return {
+      id: 'empty',
+      timespan: { start: new Date(), end: new Date() },
+      participantCount: 0,
+      messageCount: 0,
+      summary: 'No messages to summarize',
+      keyTopics: [],
+      significantMoments: [],
+      emotionalArc: {
+        startEmotion: 'neutral',
+        endEmotion: 'neutral',
+        peaks: [],
+        overallTrend: 'neutral'
+      },
+      actionItems: [],
+      quality: {
+        coherence: 0,
+        completeness: 0,
+        conciseness: 0,
+        relevance: 0,
+        overall: 0
+      }
     };
   }
 
