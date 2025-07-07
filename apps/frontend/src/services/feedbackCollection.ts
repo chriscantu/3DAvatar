@@ -458,6 +458,31 @@ export class FeedbackCollector {
     }
   }
 
+  getBenchmarkComparison(): BenchmarkComparison & { performanceGaps: string[]; optimizationSuggestions: string[] } {
+    const analytics = this.getAnalytics();
+    const currentScore = analytics.performance.overallScore;
+    
+    // Industry benchmarks (simulated)
+    const industryBenchmark = 0.75;
+    const internalBenchmark = 0.80;
+    const historicalBenchmark = 0.70;
+    const targetBenchmark = 0.85;
+    
+    return {
+      industry: currentScore / industryBenchmark,
+      internal: currentScore / internalBenchmark,
+      historical: currentScore / historicalBenchmark,
+      target: currentScore / targetBenchmark,
+      performanceGaps: this.identifyPerformanceGaps(currentScore, {
+        industry: industryBenchmark,
+        internal: internalBenchmark,
+        historical: historicalBenchmark,
+        target: targetBenchmark
+      }),
+      optimizationSuggestions: this.generateOptimizationSuggestions(currentScore, targetBenchmark)
+    };
+  }
+
   private createDefaultConfig(config?: Partial<FeedbackConfig>): FeedbackConfig {
     return {
       collectImplicitFeedback: config?.collectImplicitFeedback ?? true,
@@ -1101,6 +1126,45 @@ export class FeedbackCollector {
       feedback.userId = this.anonymizeUserId(feedback.userId);
       feedback.sessionId = this.anonymizeSessionId(feedback.sessionId);
     }
+  }
+
+  private identifyPerformanceGaps(currentScore: number, benchmarks: { industry: number; internal: number; historical: number; target: number }): string[] {
+    const gaps: string[] = [];
+    
+    if (currentScore < benchmarks.industry) {
+      gaps.push(`Below industry average by ${((benchmarks.industry - currentScore) * 100).toFixed(1)}%`);
+    }
+    
+    if (currentScore < benchmarks.internal) {
+      gaps.push(`Below internal benchmark by ${((benchmarks.internal - currentScore) * 100).toFixed(1)}%`);
+    }
+    
+    if (currentScore < benchmarks.target) {
+      gaps.push(`Below target by ${((benchmarks.target - currentScore) * 100).toFixed(1)}%`);
+    }
+    
+    return gaps;
+  }
+
+  private generateOptimizationSuggestions(currentScore: number, targetScore: number): string[] {
+    const suggestions: string[] = [];
+    
+    if (currentScore < targetScore) {
+      const gap = targetScore - currentScore;
+      
+      if (gap > 0.2) {
+        suggestions.push('Implement comprehensive feedback collection strategy');
+        suggestions.push('Focus on user experience improvements');
+        suggestions.push('Enhance response quality metrics');
+      } else if (gap > 0.1) {
+        suggestions.push('Fine-tune existing feedback mechanisms');
+        suggestions.push('Optimize response personalization');
+      } else {
+        suggestions.push('Minor adjustments to maintain performance');
+      }
+    }
+    
+    return suggestions;
   }
 }
 

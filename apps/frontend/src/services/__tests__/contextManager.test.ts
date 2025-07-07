@@ -3,9 +3,9 @@ import { ContextManager } from '../contextManager';
 import { LRUContextCache, createContextCache } from '../contextCache';
 import { AvatarMemorySystem, createMemorySystem } from '../memorySystem';
 import { EmotionalIntelligence } from '../emotionalIntelligence';
-import { ContextCompressor } from '../contextCompression';
-import { FeedbackCollector } from '../feedbackCollection';
-import { ContextValidator } from '../contextValidation';
+import { ContextCompressor, createContextCompressor } from '../contextCompression';
+import { FeedbackCollector, createFeedbackCollector } from '../feedbackCollection';
+import { ContextValidator, createContextValidator } from '../contextValidation';
 import { AVATAR_PERSONALITY_CONFIG } from '../../config/avatarPersonality';
 import type { ChatMessage } from '../../types/common';
 import type { Context, UserProfile, ContextAnalysis, EmotionalAnalysis } from '../../types/context';
@@ -249,9 +249,9 @@ describe('ContextManager', () => {
     (createContextCache as any).mockReturnValue(mockCache);
     (createMemorySystem as any).mockReturnValue(mockMemorySystem);
     (EmotionalIntelligence as any).mockImplementation(() => mockEmotionalIntelligence);
-    (ContextCompressor as any).mockImplementation(() => mockContextCompressor);
-    (FeedbackCollector as any).mockImplementation(() => mockFeedbackCollector);
-    (ContextValidator as any).mockImplementation(() => mockContextValidator);
+    (createContextCompressor as any).mockReturnValue(mockContextCompressor);
+    (createFeedbackCollector as any).mockReturnValue(mockFeedbackCollector);
+    (createContextValidator as any).mockReturnValue(mockContextValidator);
 
     // Create ContextManager instance - now it will use our mocks
     contextManager = new ContextManager();

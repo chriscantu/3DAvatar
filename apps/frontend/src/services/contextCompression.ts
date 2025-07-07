@@ -78,6 +78,40 @@ export interface SummaryQuality {
   overall: number; // 0-1
 }
 
+export interface ConversationAnalytics {
+  messageCount: number;
+  participantCount: number;
+  timespan: { start: Date; end: Date };
+  averageMessageLength: number;
+  engagementScore: number;
+  themes: string[];
+  emotionalTone: string;
+  interactionPatterns: InteractionPattern[];
+  topicProgression: TopicProgression[];
+  responseTimePatterns: ResponseTimePattern[];
+}
+
+export interface InteractionPattern {
+  type: 'question-answer' | 'statement-response' | 'back-and-forth' | 'monologue';
+  frequency: number;
+  averageLength: number;
+}
+
+export interface TopicProgression {
+  topic: string;
+  startTime: Date;
+  endTime: Date;
+  messageCount: number;
+  engagement: number;
+}
+
+export interface ResponseTimePattern {
+  averageResponseTime: number;
+  medianResponseTime: number;
+  quickResponses: number; // < 30 seconds
+  slowResponses: number; // > 5 minutes
+}
+
 export class ContextCompressor {
   private config: CompressionConfig;
   private summaryCache: Map<string, ConversationSummary> = new Map();
@@ -208,6 +242,50 @@ export class ContextCompressor {
    */
   clearCache(): void {
     this.summaryCache.clear();
+  }
+
+  optimizeContextSize(context: Context, maxSize?: number): Context {
+    const targetSize = maxSize || this.config.maxContextSize;
+    const currentSize = this.calculateContextSize(context);
+    
+    if (currentSize <= targetSize) {
+      return context;
+    }
+    
+    // Create optimized context by reducing message count
+    const optimizedContext = { ...context };
+    const compressionRatio = targetSize / currentSize;
+    const targetMessageCount = Math.floor(context.immediate.recentMessages.length * compressionRatio);
+    
+    // Keep the most important messages
+    const importantMessages = this.selectImportantMessages(
+      context.immediate.recentMessages, 
+      Math.max(1, targetMessageCount)
+    );
+    
+    optimizedContext.immediate = {
+      ...context.immediate,
+      recentMessages: importantMessages
+    };
+    
+    return optimizedContext;
+  }
+
+  analyzeConversation(messages: ChatMessage[]): ConversationAnalytics {
+    const analytics: ConversationAnalytics = {
+      messageCount: messages.length,
+      participantCount: this.countParticipants(messages),
+      timespan: this.calculateTimespan(messages),
+      averageMessageLength: this.calculateAverageMessageLength(messages),
+      engagementScore: this.calculateEngagementScore(messages),
+      themes: this.extractKeyTopics(messages),
+      emotionalTone: this.calculateOverallEmotionalTone(messages),
+      interactionPatterns: this.analyzeInteractionPatterns(messages),
+      topicProgression: this.analyzeTopicProgression(messages),
+      responseTimePatterns: this.analyzeResponseTimePatterns(messages)
+    };
+    
+    return analytics;
   }
 
   private createDefaultConfig(config?: Partial<CompressionConfig>): CompressionConfig {
@@ -656,6 +734,122 @@ export class ContextCompressor {
   private truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + '...';
+  }
+
+  private calculateAverageMessageLength(messages: ChatMessage[]): number {
+    if (messages.length === 0) return 0;
+    const totalLength = messages.reduce((sum, msg) => sum + msg.content.length, 0);
+    return totalLength / messages.length;
+  }
+
+  private calculateEngagementScore(messages: ChatMessage[]): number {
+    if (messages.length === 0) return 0;
+    
+    let score = 0;
+    const questionCount = messages.filter(msg => msg.content.includes('?')).length;
+    const exclamationCount = messages.filter(msg => msg.content.includes('!')).length;
+    
+    // Questions indicate engagement
+    score += (questionCount / messages.length) * 0.4;
+    
+    // Exclamations indicate engagement
+    score += (exclamationCount / messages.length) * 0.3;
+    
+    // Length variance indicates engagement
+    const avgLength = this.calculateAverageMessageLength(messages);
+    const lengthVariance = messages.reduce((sum, msg) => 
+      sum + Math.abs(msg.content.length - avgLength), 0) / messages.length;
+    score += Math.min(lengthVariance / 100, 1) * 0.3;
+    
+    return Math.min(score, 1);
+  }
+
+  private calculateOverallEmotionalTone(messages: ChatMessage[]): string {
+    const emotions = messages.map(msg => this.detectMessageEmotion(msg));
+    const emotionCounts = emotions.reduce((counts, emotion) => {
+      counts[emotion] = (counts[emotion] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    const dominantEmotion = Object.entries(emotionCounts)
+      .sort(([, a], [, b]) => b - a)[0];
+    
+    return dominantEmotion ? dominantEmotion[0] : 'neutral';
+  }
+
+  private analyzeInteractionPatterns(messages: ChatMessage[]): InteractionPattern[] {
+    const patterns: InteractionPattern[] = [];
+    
+    // Analyze question-answer patterns
+    const questionAnswerPairs = this.findQuestionAnswerPairs(messages);
+    if (questionAnswerPairs.length > 0) {
+      patterns.push({
+        type: 'question-answer',
+        frequency: questionAnswerPairs.length,
+        averageLength: questionAnswerPairs.reduce((sum, pair) => 
+          sum + pair.question.content.length + pair.answer.content.length, 0) / questionAnswerPairs.length
+      });
+    }
+    
+    return patterns;
+  }
+
+  private analyzeTopicProgression(messages: ChatMessage[]): TopicProgression[] {
+    const topics = this.extractKeyTopics(messages);
+    return topics.map(topic => ({
+      topic,
+      startTime: new Date(messages[0]?.timestamp || Date.now()),
+      endTime: new Date(messages[messages.length - 1]?.timestamp || Date.now()),
+      messageCount: messages.filter(msg => 
+        msg.content.toLowerCase().includes(topic.toLowerCase())).length,
+      engagement: 0.5 // Simplified engagement calculation
+    }));
+  }
+
+  private analyzeResponseTimePatterns(messages: ChatMessage[]): ResponseTimePattern[] {
+    const responseTimes: number[] = [];
+    
+    for (let i = 1; i < messages.length; i++) {
+      const timeDiff = messages[i].timestamp - messages[i - 1].timestamp;
+      responseTimes.push(timeDiff);
+    }
+    
+    if (responseTimes.length === 0) {
+      return [{
+        averageResponseTime: 0,
+        medianResponseTime: 0,
+        quickResponses: 0,
+        slowResponses: 0
+      }];
+    }
+    
+    const sortedTimes = responseTimes.sort((a, b) => a - b);
+    const average = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+    const median = sortedTimes[Math.floor(sortedTimes.length / 2)];
+    const quickResponses = responseTimes.filter(time => time < 30000).length; // < 30 seconds
+    const slowResponses = responseTimes.filter(time => time > 300000).length; // > 5 minutes
+    
+    return [{
+      averageResponseTime: average,
+      medianResponseTime: median,
+      quickResponses,
+      slowResponses
+    }];
+  }
+
+  private findQuestionAnswerPairs(messages: ChatMessage[]): { question: ChatMessage; answer: ChatMessage }[] {
+    const pairs: { question: ChatMessage; answer: ChatMessage }[] = [];
+    
+    for (let i = 0; i < messages.length - 1; i++) {
+      if (messages[i].content.includes('?') && messages[i + 1].sender !== messages[i].sender) {
+        pairs.push({
+          question: messages[i],
+          answer: messages[i + 1]
+        });
+      }
+    }
+    
+    return pairs;
   }
 }
 
