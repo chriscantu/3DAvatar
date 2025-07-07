@@ -16,8 +16,11 @@ import type {
 export class LRUContextCache {
   private cache = new Map<string, ContextCache>();
   private config: CacheConfig;
-  private cleanupTimer: number | null = null;
+  private cleanupTimer: NodeJS.Timeout | null = null;
   private eventListeners = new Map<ContextEventType, Array<(event: ContextEvent) => void>>();
+  private hitCount = 0;
+  private missCount = 0;
+  private expiredCount = 0;
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = {
@@ -76,6 +79,7 @@ export class LRUContextCache {
     const cacheEntry = this.cache.get(key);
     
     if (!cacheEntry) {
+      this.missCount++;
       return null;
     }
 
@@ -84,6 +88,8 @@ export class LRUContextCache {
     // Check if entry has expired
     if (this.isExpired(cacheEntry, now)) {
       this.cache.delete(key);
+      this.expiredCount++;
+      this.missCount++;
       this.emitEvent('context_expired', {
         key,
         expiredAt: now
@@ -94,6 +100,7 @@ export class LRUContextCache {
     // Update access statistics
     cacheEntry.accessCount++;
     cacheEntry.lastAccessed = now;
+    this.hitCount++;
 
     // Move to end (most recently used)
     this.cache.delete(key);
@@ -140,6 +147,7 @@ export class LRUContextCache {
     this.cache.delete(key);
     
     if (existed) {
+      this.expiredCount++;
       this.emitEvent('context_expired', {
         key,
         expiredAt: new Date(),
@@ -156,6 +164,9 @@ export class LRUContextCache {
   clear(): void {
     const keys = Array.from(this.cache.keys());
     this.cache.clear();
+    this.hitCount = 0;
+    this.missCount = 0;
+    this.expiredCount = 0;
     
     this.emitEvent('context_expired', {
       keys,
@@ -168,15 +179,10 @@ export class LRUContextCache {
    * Get cache statistics
    */
   getStats(): CacheStats {
-    const now = new Date();
     let totalAccess = 0;
-    let expiredCount = 0;
     
     for (const entry of this.cache.values()) {
       totalAccess += entry.accessCount;
-      if (this.isExpired(entry, now)) {
-        expiredCount++;
-      }
     }
 
     return {
@@ -184,7 +190,7 @@ export class LRUContextCache {
       maxSize: this.config.maxSize,
       hitRate: this.calculateHitRate(),
       totalAccess,
-      expiredCount,
+      expiredCount: this.expiredCount,
       memoryUsage: this.estimateMemoryUsage()
     };
   }
@@ -258,6 +264,7 @@ export class LRUContextCache {
     if (!firstEntry.done) {
       const [key] = firstEntry.value;
       this.cache.delete(key);
+      this.expiredCount++;
       
       this.emitEvent('context_expired', {
         key,
@@ -268,12 +275,15 @@ export class LRUContextCache {
   }
 
   private isExpired(entry: ContextCache, now: Date): boolean {
+    if (entry.ttl === 0) {
+      return true; // Zero TTL means immediately expired
+    }
     const ageInSeconds = (now.getTime() - entry.timestamp.getTime()) / 1000;
     return ageInSeconds > entry.ttl;
   }
 
   private startCleanupTimer(): void {
-    this.cleanupTimer = window.setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       this.cleanupExpiredEntries();
     }, this.config.cleanupInterval * 1000);
   }
@@ -300,6 +310,7 @@ export class LRUContextCache {
     });
 
     if (expiredKeys.length > 0) {
+      this.expiredCount += expiredKeys.length;
       this.emitEvent('context_expired', {
         keys: expiredKeys,
         expiredAt: now,
@@ -325,9 +336,11 @@ export class LRUContextCache {
   }
 
   private calculateHitRate(): number {
-    // This would be calculated based on hit/miss statistics
-    // For now, returning a placeholder value
-    return 0.85; // 85% hit rate
+    const totalAccess = this.hitCount + this.missCount;
+    if (totalAccess === 0) {
+      return 0;
+    }
+    return this.hitCount / totalAccess;
   }
 
   private estimateMemoryUsage(): number {
