@@ -1,7 +1,27 @@
 // Avatar Animation Controller for the 3D Avatar project
 // Manages avatar movement states and transitions based on conversation context
 
-import { EventEmitter } from 'events';
+// Simple custom event emitter for browser compatibility
+class SimpleEventEmitter {
+  private listeners: { [event: string]: ((...args: unknown[]) => void)[] } = {};
+
+  on(event: string, listener: (...args: unknown[]) => void): void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+  }
+
+  emit(event: string, ...args: unknown[]): void {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach(listener => listener(...args));
+    }
+  }
+
+  removeAllListeners(): void {
+    this.listeners = {};
+  }
+}
 
 export type AvatarState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'excited' | 'curious';
 export type MovementIntensity = 'subtle' | 'moderate' | 'animated';
@@ -43,7 +63,7 @@ export interface MovementPattern {
   idleMovements: boolean;
 }
 
-export class AvatarAnimationController extends EventEmitter {
+export class AvatarAnimationController extends SimpleEventEmitter {
   private currentState: AvatarAnimationState;
   private targetState: AvatarAnimationState;
   private transitionDuration: number = 800; // ms
