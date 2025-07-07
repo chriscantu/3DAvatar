@@ -243,6 +243,57 @@ export interface EmotionAnalysis {
 }
 
 /**
+ * Enhanced Emotional Intelligence Types
+ */
+export interface EmotionalState {
+  primary: string;
+  secondary?: string;
+  intensity: number; // 0-1 scale
+  confidence: number; // 0-1 scale
+  indicators: string[];
+  trend: 'improving' | 'declining' | 'stable';
+}
+
+export interface EmotionalAnalysis {
+  detectedEmotion: string;
+  confidence: number;
+  suggestedResponse: string;
+  emotionalContext: EmotionalState;
+}
+
+export interface EmotionalContext {
+  primary: string;
+  secondary?: string;
+  intensity: number; // 0-1 scale
+  confidence: number; // 0-1 scale
+  indicators: string[];
+  trend: 'improving' | 'declining' | 'stable';
+}
+
+export interface ResponseToneAdjustment {
+  tone: 'supportive' | 'enthusiastic' | 'calming' | 'encouraging' | 'neutral';
+  adjustments: {
+    warmth: number; // -1 to 1
+    energy: number; // -1 to 1
+    formality: number; // -1 to 1
+    empathy: number; // 0 to 1
+  };
+  suggestedPhrases: string[];
+  avoidPhrases: string[];
+}
+
+export interface EmotionalPattern {
+  userId: string;
+  patterns: {
+    commonEmotions: string[];
+    triggers: { emotion: string; keywords: string[] }[];
+    recoveryStrategies: { emotion: string; effectiveResponses: string[] }[];
+    emotionalJourney: { timestamp: number; emotion: string; intensity: number }[];
+  };
+  lastUpdated: number;
+}
+
+/**
  * Environment Data
  */
 export interface EnvironmentData {

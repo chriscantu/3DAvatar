@@ -19,6 +19,11 @@ import type { ChatMessage } from '../types/common';
 
 import { LRUContextCache, CacheKeyGenerator, createContextCache } from './contextCache';
 import { AvatarMemorySystem, createMemorySystem } from './memorySystem';
+import { EmotionalIntelligence } from './emotionalIntelligence';
+import { ContextCompressor, createContextCompressor } from './contextCompression';
+import { FeedbackCollector, createFeedbackCollector } from './feedbackCollection';
+import { ContextValidator, createContextValidator } from './contextValidation';
+import type { ConversationSummary } from './contextCompression';
 import { AVATAR_PERSONALITY_CONFIG } from '../config/avatarPersonality';
 
 /**
@@ -28,6 +33,10 @@ import { AVATAR_PERSONALITY_CONFIG } from '../config/avatarPersonality';
 export class ContextManager {
   private cache: LRUContextCache;
   private memory: AvatarMemorySystem;
+  private emotionalIntelligence: EmotionalIntelligence;
+  private contextCompressor: ContextCompressor;
+  private feedbackCollector: FeedbackCollector;
+  private contextValidator: ContextValidator;
   private config: ContextManagerConfig;
   private currentSessionId: string;
   private eventListeners = new Map<ContextEventType, Array<(event: ContextEvent) => void>>();
@@ -36,6 +45,10 @@ export class ContextManager {
     this.config = this.createDefaultConfig(config);
     this.cache = createContextCache(this.config.cache);
     this.memory = createMemorySystem(this.config.memory);
+    this.emotionalIntelligence = new EmotionalIntelligence();
+    this.contextCompressor = createContextCompressor();
+    this.feedbackCollector = createFeedbackCollector();
+    this.contextValidator = createContextValidator();
     this.currentSessionId = this.generateSessionId();
 
     // Set up event forwarding
@@ -177,11 +190,82 @@ export class ContextManager {
   }
 
   /**
+   * Compress context to optimize size and performance
+   */
+  compressContext(context: Context): Context {
+    const compressionResult = this.contextCompressor.compressContext(context);
+    
+    // Create compressed context
+    const compressedContext: Context = {
+      ...context,
+      immediate: {
+        ...context.immediate,
+        recentMessages: compressionResult.retainedMessages
+      }
+    };
+    
+    // Emit compression event
+    this.emitEvent('context_updated', {
+      type: 'compression',
+      originalSize: compressionResult.originalSize,
+      compressedSize: compressionResult.compressedSize,
+      compressionRatio: compressionResult.compressionRatio,
+      timestamp: new Date()
+    });
+    
+    return compressedContext;
+  }
+
+  /**
+   * Get conversation summary
+   */
+  getConversationSummary(messages?: ChatMessage[]): ConversationSummary {
+    const messagesToSummarize = messages || this.memory.shortTermMemory.getRecentMessages(50);
+    return this.contextCompressor.summarizeConversation(messagesToSummarize);
+  }
+
+  /**
+   * Collect user feedback
+   */
+  collectFeedback(
+    userId: string,
+    rating: number,
+    category: string,
+    content: string,
+    context?: any
+  ): void {
+    this.feedbackCollector.collectExplicitFeedback(
+      this.currentSessionId,
+      userId,
+      rating,
+      category as any,
+      content,
+      context
+    );
+    
+    this.emitEvent('context_updated', {
+      type: 'feedback_collected',
+      sessionId: this.currentSessionId,
+      rating,
+      category,
+      timestamp: new Date()
+    });
+  }
+
+  /**
+   * Get feedback analytics
+   */
+  getFeedbackAnalytics(): any {
+    return this.feedbackCollector.getAnalytics();
+  }
+
+  /**
    * Clear session data
    */
   clearSession(preserveUserProfile: boolean = true): void {
     this.memory.clearMemories(preserveUserProfile);
     this.cache.clear();
+    this.contextCompressor.clearCache();
     this.currentSessionId = this.generateSessionId();
     
     this.emitEvent('context_expired', {
@@ -357,33 +441,87 @@ export class ContextManager {
     };
   }
 
+  private buildMinimalContext(message: ChatMessage): Context {
+    return {
+      system: this.buildSystemContext(),
+      session: this.getCurrentSessionContext(),
+      immediate: {
+        recentMessages: [message],
+        currentUserEmotion: 'neutral',
+        conversationFlow: {
+          currentPhase: 'exploration',
+          flowState: {
+            momentum: 0.5,
+            depth: 0.5,
+            engagement: 0.5,
+            clarity: 0.5
+          },
+          transitionTriggers: []
+        },
+        activeTopics: [],
+        environmentData: this.buildEnvironmentData()
+      },
+      timestamp: new Date().toISOString()
+    };
+  }
+
   private detectEmotion(message: ChatMessage): EmotionState {
-    const content = message.content.toLowerCase();
-    
-    // Simple emotion detection based on keywords
-    if (content.includes('happy') || content.includes('great') || content.includes('awesome')) {
-      return 'happy';
+    // Use emotional intelligence for enhanced emotion detection
+    try {
+      const context = this.buildMinimalContext(message);
+      const analysis = this.emotionalIntelligence.analyzeEmotionalState(message.content, context);
+      
+      // Update emotional patterns
+      this.emotionalIntelligence.updateEmotionalPattern(
+        context.session.userProfile.userId, 
+        analysis.detectedEmotion, 
+        message.content
+      );
+      
+      // Map detected emotion to EmotionState
+      const emotionMap: Record<string, EmotionState> = {
+        'happy': 'happy',
+        'sad': 'sad',
+        'excited': 'excited',
+        'calm': 'calm',
+        'angry': 'frustrated',
+        'frustrated': 'frustrated',
+        'confused': 'confused',
+        'curious': 'curious',
+        'anxious': 'frustrated',
+        'positive': 'happy',
+        'negative': 'sad'
+      };
+      
+      return emotionMap[analysis.detectedEmotion] || 'neutral';
+    } catch {
+      // Fallback to simple emotion detection
+      const content = message.content.toLowerCase();
+      
+      if (content.includes('happy') || content.includes('great') || content.includes('awesome')) {
+        return 'happy';
+      }
+      if (content.includes('sad') || content.includes('upset') || content.includes('disappointed')) {
+        return 'sad';
+      }
+      if (content.includes('excited') || content.includes('amazing') || content.includes('wow')) {
+        return 'excited';
+      }
+      if (content.includes('confused') || content.includes('don\'t understand') || content.includes('what')) {
+        return 'confused';
+      }
+      if (content.includes('frustrated') || content.includes('annoyed') || content.includes('irritated')) {
+        return 'frustrated';
+      }
+      if (content.includes('curious') || content.includes('interested') || content.includes('wonder')) {
+        return 'curious';
+      }
+      if (content.includes('calm') || content.includes('peaceful') || content.includes('relaxed')) {
+        return 'calm';
+      }
+      
+      return 'neutral';
     }
-    if (content.includes('sad') || content.includes('upset') || content.includes('disappointed')) {
-      return 'sad';
-    }
-    if (content.includes('excited') || content.includes('amazing') || content.includes('wow')) {
-      return 'excited';
-    }
-    if (content.includes('confused') || content.includes('don\'t understand') || content.includes('what')) {
-      return 'confused';
-    }
-    if (content.includes('frustrated') || content.includes('annoyed') || content.includes('irritated')) {
-      return 'frustrated';
-    }
-    if (content.includes('curious') || content.includes('interested') || content.includes('wonder')) {
-      return 'curious';
-    }
-    if (content.includes('calm') || content.includes('peaceful') || content.includes('relaxed')) {
-      return 'calm';
-    }
-    
-    return 'neutral';
   }
 
   private detectEmotionFromMemories(messages: ChatMessage[]): EmotionState {
