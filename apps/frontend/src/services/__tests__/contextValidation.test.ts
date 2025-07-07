@@ -528,14 +528,14 @@ describe('ContextValidator Service', () => {
         name: 'custom_test_rule',
         description: 'Test custom validation rule',
         validate: (context: Context) => {
-          if (context.session.userId === 'test-user') {
+          if (context.session.userProfile.userId === 'test-user') {
             return {
               isValid: false,
               error: {
-                field: 'session.userId',
+                field: 'session.userProfile.userId',
                 type: 'custom_error',
                 message: 'Test user not allowed',
-                severity: 'error'
+                severity: 'high'
               }
             };
           }
