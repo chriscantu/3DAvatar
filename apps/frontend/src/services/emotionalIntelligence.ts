@@ -1,5 +1,4 @@
-import type { ChatMessage } from '../types/common';
-import type { Context, EmotionalState, EmotionalAnalysis } from '../types/context';
+import type { Context, EmotionalAnalysis } from '../types/context';
 
 /**
  * Emotional Intelligence Service for Avatar System
@@ -56,24 +55,29 @@ export class EmotionalIntelligence {
   analyzeEmotionalState(userInput: string, context: Context): EmotionalAnalysis {
     const textAnalysis = this.analyzeTextEmotion(userInput);
     const contextualAnalysis = this.analyzeContextualEmotion(context);
-    const historicalAnalysis = this.analyzeEmotionalHistory(context.session.userId);
+    
+    // Safe access to userId with fallback
+    const userId = context?.session?.userProfile?.userId || 'unknown';
+    const historicalAnalysis = this.analyzeEmotionalHistory(userId);
 
     const primary = this.determinePrimaryEmotion(textAnalysis, contextualAnalysis, historicalAnalysis);
     const intensity = this.calculateEmotionalIntensity(userInput, textAnalysis);
     const confidence = this.calculateConfidence(textAnalysis, contextualAnalysis);
 
+    const emotionalContext = {
+      primary,
+      secondary: this.determineSecondaryEmotion(textAnalysis),
+      intensity,
+      confidence,
+      indicators: textAnalysis.indicators,
+      trend: this.determineEmotionalTrend(userId)
+    };
+
     return {
       detectedEmotion: primary,
       confidence,
-      suggestedResponse: this.suggestResponseTone(primary, intensity),
-      emotionalContext: {
-        primary,
-        secondary: this.determineSecondaryEmotion(textAnalysis),
-        intensity,
-        confidence,
-        indicators: textAnalysis.indicators,
-        trend: this.determineEmotionalTrend(context.session.userId)
-      }
+      suggestedResponse: this.getToneAdjustment(emotionalContext),
+      emotionalContext
     };
   }
 
@@ -111,7 +115,7 @@ export class EmotionalIntelligence {
   /**
    * Update emotional patterns based on user interactions
    */
-  updateEmotionalPattern(userId: string, emotion: string, userInput: string, responseEffectiveness?: number): void {
+  updateEmotionalPattern(userId: string, emotion: string, intensity: number): void {
     let pattern = this.emotionalPatterns.get(userId);
     
     if (!pattern) {
@@ -131,7 +135,7 @@ export class EmotionalIntelligence {
     pattern.patterns.emotionalJourney.push({
       timestamp: Date.now(),
       emotion,
-      intensity: this.calculateEmotionalIntensity(userInput, this.analyzeTextEmotion(userInput))
+      intensity
     });
 
     // Keep only last 100 entries
@@ -144,13 +148,12 @@ export class EmotionalIntelligence {
       pattern.patterns.commonEmotions.push(emotion);
     }
 
-    // Update triggers
-    const keywords = this.extractEmotionalKeywords(userInput);
+    // Update triggers (simplified without userInput)
     const existingTrigger = pattern.patterns.triggers.find(t => t.emotion === emotion);
     if (existingTrigger) {
-      existingTrigger.keywords = [...new Set([...existingTrigger.keywords, ...keywords])];
+      // Keep existing keywords
     } else {
-      pattern.patterns.triggers.push({ emotion, keywords });
+      pattern.patterns.triggers.push({ emotion, keywords: [] });
     }
 
     pattern.lastUpdated = Date.now();
@@ -166,7 +169,7 @@ export class EmotionalIntelligence {
 
   private initializeEmotionKeywords(): void {
     this.emotionKeywords.set('happy', [
-      'great', 'awesome', 'fantastic', 'wonderful', 'amazing', 'excited', 'thrilled',
+      'happy', 'great', 'awesome', 'fantastic', 'wonderful', 'amazing', 'excited', 'thrilled',
       'delighted', 'pleased', 'joyful', 'cheerful', 'glad', 'content', 'satisfied'
     ]);
 
@@ -192,7 +195,7 @@ export class EmotionalIntelligence {
 
     this.emotionKeywords.set('excited', [
       'excited', 'thrilled', 'pumped', 'enthusiastic', 'eager', 'animated', 'energetic',
-      'passionate', 'motivated', 'inspired', 'fired up', 'psyched'
+      'passionate', 'motivated', 'inspired', 'fired up', 'psyched', 'incredible', 'wow'
     ]);
   }
 
@@ -200,39 +203,89 @@ export class EmotionalIntelligence {
     const lowerText = text.toLowerCase();
     const results: { emotion: string; score: number; indicators: string[] }[] = [];
 
+    // First, check for specific emotions (prioritize these)
     for (const [emotion, keywords] of this.emotionKeywords.entries()) {
       const foundKeywords = keywords.filter(keyword => lowerText.includes(keyword));
       if (foundKeywords.length > 0) {
+        // Calculate score based on keyword matches and text length
+        const keywordScore = foundKeywords.length / keywords.length;
+        const textLengthFactor = Math.min(text.length / 100, 1); // Normalize by text length
+        
+        // Boost score for multiple keywords and strong emotional indicators
+        let finalScore = keywordScore * (0.7 + textLengthFactor * 0.3);
+        
+        // Base boost for any emotional keyword detection
+        finalScore = Math.max(finalScore, 0.6); // Minimum confidence for any emotion detection
+        
+        // MAJOR boost for exact emotion name matches
+        const hasExactMatch = foundKeywords.includes(emotion);
+        if (hasExactMatch) {
+          finalScore *= 1.8; // Strong preference for exact emotion names
+        }
+        
+        // Boost confidence for multiple keyword matches
+        if (foundKeywords.length > 1) {
+          finalScore *= 1.4;
+        }
+        
+        // Boost confidence for strong emotional words
+        const strongEmotionalWords = ['amazing', 'fantastic', 'wonderful', 'terrible', 'awful', 'furious', 'thrilled', 'excited', 'devastated', 'disappointed', 'frustrated'];
+        const hasStrongWords = foundKeywords.some(keyword => strongEmotionalWords.includes(keyword));
+        if (hasStrongWords) {
+          finalScore *= 1.2;
+        }
+        
+        // Extra boost for very strong emotional indicators
+        const veryStrongWords = ['devastated', 'furious', 'thrilled', 'ecstatic', 'terrified', 'overjoyed'];
+        const hasVeryStrongWords = foundKeywords.some(keyword => veryStrongWords.includes(keyword));
+        if (hasVeryStrongWords) {
+          finalScore *= 1.5;
+        }
+        
         results.push({
           emotion,
-          score: foundKeywords.length / keywords.length,
+          score: Math.min(finalScore, 1), // Cap at 1.0
           indicators: foundKeywords
         });
       }
     }
 
-    // Add sentiment analysis
-    const sentiment = this.sentimentAnalyzer.analyze(text);
-    if (sentiment.score > 0.5) {
-      results.push({ emotion: 'positive', score: sentiment.score, indicators: ['positive sentiment'] });
-    } else if (sentiment.score < -0.5) {
-      results.push({ emotion: 'negative', score: Math.abs(sentiment.score), indicators: ['negative sentiment'] });
+    // Only add general sentiment if no specific emotions found
+    if (results.length === 0) {
+      const sentiment = this.sentimentAnalyzer.analyze(text);
+      if (sentiment.score > 0.3) {
+        results.push({ emotion: 'positive', score: sentiment.score * 0.6, indicators: ['positive sentiment'] });
+      } else if (sentiment.score < -0.3) {
+        results.push({ emotion: 'negative', score: Math.abs(sentiment.score) * 0.6, indicators: ['negative sentiment'] });
+      }
     }
 
     if (results.length === 0) {
-      return { emotion: 'neutral', confidence: 0.5, indicators: [] };
+      return { emotion: 'neutral', confidence: 0.3, indicators: [] };
     }
 
     // Return highest scoring emotion
     const topResult = results.reduce((max, current) => current.score > max.score ? current : max);
+    
+    // Boost confidence if multiple indicators found
+    let confidence = topResult.score;
+    if (topResult.indicators.length > 1) {
+      confidence = Math.min(confidence * 1.2, 1);
+    }
+    
     return {
       emotion: topResult.emotion,
-      confidence: Math.min(topResult.score * 2, 1), // Scale confidence
+      confidence: Math.min(confidence, 1),
       indicators: topResult.indicators
     };
   }
 
   private analyzeContextualEmotion(context: Context): { emotion: string; confidence: number } {
+    // First check if there's a current user emotion set in the context
+    if (context.immediate.currentUserEmotion && context.immediate.currentUserEmotion !== 'neutral') {
+      return { emotion: context.immediate.currentUserEmotion, confidence: 0.7 };
+    }
+
     // Analyze conversation flow for emotional context
     const recentMessages = context.immediate.recentMessages.slice(-3);
     if (recentMessages.length === 0) {
@@ -299,8 +352,17 @@ export class EmotionalIntelligence {
   }
 
   private determineSecondaryEmotion(textAnalysis: { emotion: string; confidence: number }): string | undefined {
-    // For now, return undefined - could be enhanced to detect mixed emotions
-    return undefined;
+    // Simple implementation: return a common secondary emotion based on primary
+    const secondaryEmotions: Record<string, string> = {
+      'happy': 'excited',
+      'excited': 'happy',
+      'sad': 'anxious',
+      'angry': 'frustrated',
+      'anxious': 'worried',
+      'confused': 'uncertain'
+    };
+    
+    return secondaryEmotions[textAnalysis.emotion] || undefined;
   }
 
   private calculateEmotionalIntensity(userInput: string, textAnalysis: { emotion: string; confidence: number; indicators: string[] }): number {
@@ -317,7 +379,7 @@ export class EmotionalIntelligence {
     }
     
     if (diminishers.some(word => lowerInput.includes(word))) {
-      intensity = intensity * 0.7;
+      intensity = intensity * 0.6; // More reduction for mild expressions
     }
 
     // Check for punctuation intensity

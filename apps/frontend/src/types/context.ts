@@ -257,7 +257,7 @@ export interface EmotionalState {
 export interface EmotionalAnalysis {
   detectedEmotion: string;
   confidence: number;
-  suggestedResponse: string;
+  suggestedResponse: ResponseToneAdjustment;
   emotionalContext: EmotionalState;
 }
 
