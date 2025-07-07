@@ -50,7 +50,13 @@ const Message = React.memo<{ message: Message }>(({ message }) => {
             <span></span>
           </div>
         ) : (
-          <p>{message.content}</p>
+          <div className="message-text">
+            {message.content.split('\n').map((line, index) => (
+              <div key={index} className="message-line">
+                {line}
+              </div>
+            ))}
+          </div>
         )}
       </div>
       <div className="message-time" aria-label={`Sent at ${formattedTime}`}>
