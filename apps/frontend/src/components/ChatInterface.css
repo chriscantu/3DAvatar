@@ -22,7 +22,7 @@
 
 .chat-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -86,7 +86,7 @@
   background: linear-gradient(135deg, #f8f4ff 0%, #e8d5ff 100%);
   border-radius: 16px;
   border: 2px dashed rgba(139, 69, 19, 0.3);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -129,13 +129,13 @@
 .message-text {
   margin: 0;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
 }
 
 .message-line {
   margin-bottom: 8px;
-  min-height: 1.2em;
+  min-height: 1.3em;
 }
 
 .message-line:last-child {
@@ -147,7 +147,7 @@
 }
 
 .avatar-message .message-text {
-  font-size: 14px;
+  font-size: 16px;
   color: #2c3e50;
   font-weight: 400;
 }
@@ -155,10 +155,11 @@
 .user-message .message-text {
   color: white;
   font-weight: 400;
+  font-size: 16px;
 }
 
 .message-time {
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.65;
   text-align: right;
   margin-top: 4px;
@@ -222,7 +223,7 @@
   border: 2px solid rgba(139, 69, 19, 0.2);
   border-radius: 25px;
   outline: none;
-  font-size: 14px;
+  font-size: 16px;
   background: white;
   transition: all 0.3s ease;
   line-height: 1.4;
@@ -309,7 +310,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -351,7 +352,7 @@
   border: 1px solid #fecaca;
   border-radius: 12px;
   color: #dc2626;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.4;
   font-weight: 500;
   animation: slideIn 0.3s ease;
@@ -438,7 +439,7 @@
 }
 
 .typing-text {
-  font-size: 12px;
+  font-size: 14px;
   color: #666;
   font-style: italic;
 }
