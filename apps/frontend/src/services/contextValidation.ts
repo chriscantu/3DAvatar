@@ -590,7 +590,7 @@ export class ContextValidator {
     // Check timestamp consistency
     checks++;
     if (!context.timestamp) {
-      errors.push(this.createError('context.timestamp', 'missing_required', 'Context timestamp is required', 'medium'));
+      errors.push(this.createError('context.timestamp', 'missing_required', 'Context timestamp is required', 'high'));
     } else {
       passed++;
       
@@ -599,7 +599,7 @@ export class ContextValidator {
       
       if (contextTime < sessionTime) {
         errors.push(this.createError('context.timestamp', 'consistency_error', 
-          'Context timestamp is before session start time', 'medium'));
+          'Context timestamp is before session start time', 'high'));
       }
     }
 
@@ -608,9 +608,9 @@ export class ContextValidator {
     const actualMessageCount = context.immediate.recentMessages.length;
     const reportedMessageCount = context.session.messageCount;
     
-    if (actualMessageCount > reportedMessageCount) {
+    if (actualMessageCount !== reportedMessageCount) {
       errors.push(this.createError('context.messageCount', 'consistency_error',
-        'Recent messages count exceeds reported session message count', 'medium'));
+        `Message count mismatch: reported ${reportedMessageCount}, actual ${actualMessageCount}`, 'high'));
     } else {
       passed++;
     }
@@ -980,7 +980,8 @@ export class ContextValidator {
     errors: ValidationError[],
     warnings: ValidationWarning[],
     totalChecks: number,
-    passedChecks: number
+    passedChecks: number,
+    validationTime: number = 0
   ): ValidationResult {
     return {
       isValid: errors.filter(e => e.severity === 'critical' || e.severity === 'high').length === 0,
@@ -993,7 +994,7 @@ export class ContextValidator {
         failedChecks: totalChecks - passedChecks,
         warningsCount: warnings.length,
         criticalErrors: errors.filter(e => e.severity === 'critical').length,
-        validationTime: 0,
+        validationTime,
         coverage: 1
       },
       recommendations: this.generateRecommendations(errors, warnings)

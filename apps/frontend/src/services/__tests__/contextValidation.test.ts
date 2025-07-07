@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ContextValidator, createContextValidator } from '../contextValidation';
-import type { Context, EmotionalState, ValidationRule } from '../../types/context';
+import type { Context, EmotionState, ValidationRule } from '../../types/context';
 import type { ChatMessage } from '../../types/common';
 
 // Mock context for testing
@@ -12,34 +12,59 @@ const createMockContext = (overrides: Partial<Context> = {}): Context => ({
         curiosity: 0.8,
         patience: 0.7,
         supportiveness: 0.8,
-        playfulness: 0.6,
-        wisdom: 0.7
+        humor: 'playful',
+        formality: 0.6,
+        enthusiasm: 0.7
       },
-      communicationStyle: {
-        warmth: 0.8,
-        formality: 0.3,
-        directness: 0.6,
-        enthusiasm: 0.7,
-        supportiveness: 0.9
-      },
-      coreValues: ['helpfulness', 'empathy', 'growth', 'authenticity'],
-      interests: ['technology', 'learning', 'creativity', 'human connection'],
-      boundaries: {
-        topics: ['no harmful content', 'no personal medical advice'],
-        tone: ['always respectful', 'supportive', 'encouraging']
-      },
-      responsePatterns: {
+      communicationPatterns: {
         greeting: {
-          structure: 'warm',
-          vocabulary: 'friendly',
+          tone: 'warm',
+          approach: 'friendly',
           examples: ['Hello! How can I help you today?']
+        },
+        questioning: {
+          tone: 'curious',
+          approach: 'exploratory',
+          examples: ['Can you tell me more about that?']
+        },
+        explaining: {
+          tone: 'clear',
+          approach: 'accessible',
+          examples: ['Let me explain that clearly', 'Here\'s what I know about that']
+        },
+        encouraging: {
+          tone: 'supportive',
+          approach: 'empathetic',
+          examples: ['I understand how you feel', 'That sounds challenging']
+        },
+        farewells: {
+          tone: 'warm',
+          approach: 'caring',
+          examples: ['Take care!', 'I hope this was helpful']
+        }
+      },
+      boundaries: {
+        prohibitedTopics: ['no harmful content', 'no personal medical advice'],
+        maxMessageLength: 1000,
+        responseGuidelines: ['always respectful', 'supportive', 'encouraging']
+      },
+      responseStyles: {
+        casual: {
+          structure: 'relaxed',
+          vocabulary: 'friendly',
+          examples: ['Hey there!', 'That\'s cool!']
+        },
+        professional: {
+          structure: 'structured',
+          vocabulary: 'formal',
+          examples: ['I would recommend', 'Based on my analysis']
         },
         supportive: {
           structure: 'empathetic',
           vocabulary: 'caring',
           examples: ['I understand how you feel', 'That sounds challenging']
         },
-        informative: {
+        educational: {
           structure: 'clear',
           vocabulary: 'accessible',
           examples: ['Let me explain that clearly', 'Here\'s what I know about that']
@@ -71,7 +96,6 @@ const createMockContext = (overrides: Partial<Context> = {}): Context => ({
   },
   session: {
     sessionId: 'test-session',
-    userId: 'test-user',
     userProfile: {
       userId: 'test-user',
       interactionHistory: [],
@@ -91,7 +115,7 @@ const createMockContext = (overrides: Partial<Context> = {}): Context => ({
     sessionObjectives: [],
     conversationThemes: [],
     startTime: new Date(),
-    messageCount: 5
+    messageCount: 2
   },
   immediate: {
     recentMessages: [
@@ -108,7 +132,7 @@ const createMockContext = (overrides: Partial<Context> = {}): Context => ({
         timestamp: new Date().toISOString()
       }
     ],
-    currentUserEmotion: 'neutral' as EmotionalState,
+    currentUserEmotion: 'neutral' as EmotionState,
     conversationFlow: {
       currentPhase: 'greeting',
       flowState: {
