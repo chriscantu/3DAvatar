@@ -46,44 +46,56 @@ export class ContextManager {
    * Create or update context based on new message
    */
   async processMessage(message: ChatMessage): Promise<Context> {
-    const context = await this.buildContext(message);
-    
-    // Store in memory
-    this.memory.processMessage(message, context);
-    
-    // Cache the context
-    const cacheKey = CacheKeyGenerator.forConversationContext(
-      this.currentSessionId, 
-      context.session.messageCount
-    );
-    this.cache.set(cacheKey, context);
-    
-    // Emit context creation event
-    this.emitEvent('context_created', {
-      sessionId: this.currentSessionId,
-      messageId: message.id,
-      contextType: 'conversation',
-      timestamp: new Date()
-    });
+    try {
+      const context = await this.buildContext(message);
+      
+      // Store in memory
+      this.memory.processMessage(message, context);
+      
+      // Cache the context
+      const cacheKey = CacheKeyGenerator.forConversationContext(
+        this.currentSessionId, 
+        context.session.messageCount
+      );
+      this.cache.set(cacheKey, context);
+      
+      // Emit context creation event
+      this.emitEvent('context_created', {
+        sessionId: this.currentSessionId,
+        messageId: message.id,
+        contextType: 'conversation',
+        timestamp: new Date()
+      });
 
-    return context;
+      return context;
+    } catch (error) {
+      // Fallback to building a minimal context if processing fails
+      console.warn('Message processing failed, building fallback context:', error);
+      return await this.buildFallbackContext(message.content);
+    }
   }
 
   /**
    * Get context for response generation
    */
   async getContextForResponse(query: string): Promise<Context> {
-    // Try to get from cache first
-    const cacheKey = CacheKeyGenerator.forSession(this.currentSessionId);
-    let context = this.cache.get(cacheKey);
-    
-    if (!context) {
-      // Build new context if not in cache
-      context = await this.buildContextFromMemory(query);
-      this.cache.set(cacheKey, context);
+    try {
+      // Try to get from cache first
+      const cacheKey = CacheKeyGenerator.forSession(this.currentSessionId);
+      let context = this.cache.get(cacheKey);
+      
+      if (!context) {
+        // Build new context if not in cache
+        context = await this.buildContextFromMemory(query);
+        this.cache.set(cacheKey, context);
+      }
+      
+      return context;
+    } catch (error) {
+      // Fallback to building a minimal context if cache fails
+      console.warn('Context retrieval failed, building fallback context:', error);
+      return await this.buildFallbackContext(query);
     }
-    
-    return context;
   }
 
   /**
@@ -235,6 +247,59 @@ export class ContextManager {
       currentUserEmotion: this.detectEmotionFromMemories(relevantMemories.recentMessages),
       conversationFlow: this.analyzeConversationFlow(relevantMemories.recentMessages),
       activeTopics: this.extractActiveTopics(relevantMemories.recentMessages),
+      environmentData: this.buildEnvironmentData()
+    };
+    
+    return {
+      system,
+      session,
+      immediate,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  private async buildFallbackContext(query: string): Promise<Context> {
+    // Build a minimal context when errors occur
+    const system = this.buildSystemContext();
+    
+    const session: SessionContext = {
+      sessionId: this.currentSessionId,
+      userProfile: {
+        userId: 'anonymous',
+        interactionHistory: [],
+        preferences: {
+          preferredResponseLength: 'medium',
+          formalityLevel: 0.5,
+          topicDepth: 'moderate',
+          explanationStyle: 'simple'
+        },
+        communicationStyle: {
+          directness: 0.5,
+          emotionalExpressiveness: 0.5,
+          questioningStyle: 'exploratory'
+        },
+        topicInterests: []
+      },
+      sessionObjectives: [],
+      conversationThemes: [],
+      startTime: new Date(),
+      messageCount: 0
+    };
+    
+    const immediate: ImmediateContext = {
+      recentMessages: [],
+      currentUserEmotion: 'neutral',
+      conversationFlow: {
+        currentPhase: 'greeting',
+        flowState: {
+          momentum: 0.5,
+          depth: 0.3,
+          engagement: 0.5,
+          clarity: 0.8
+        },
+        transitionTriggers: []
+      },
+      activeTopics: [query],
       environmentData: this.buildEnvironmentData()
     };
     
