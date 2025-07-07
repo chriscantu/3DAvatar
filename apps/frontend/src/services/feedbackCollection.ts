@@ -326,15 +326,15 @@ export class FeedbackCollector {
   /**
    * Get comprehensive feedback analytics
    */
-  getAnalytics(forceRefresh: boolean = false): FeedbackAnalytics {
+  getAnalytics(forceRefresh: boolean = false): any {
     if (!forceRefresh && this.analyticsCache && this.isAnalyticsCacheValid()) {
-      return this.analyticsCache;
+      return this.getFlatAnalytics(this.analyticsCache);
     }
 
     const analytics = this.generateAnalytics();
     this.analyticsCache = analytics;
     this.lastAnalyticsUpdate = new Date();
-    return analytics;
+    return this.getFlatAnalytics(analytics);
   }
 
   /**
@@ -1025,7 +1025,7 @@ export class FeedbackCollector {
       f.type,
       f.rating || '',
       f.category,
-      f.content.replace(/,/g, ';'), // Replace commas to avoid CSV issues
+      this.ensureStringContent(f.content).replace(/,/g, ';'), // Replace commas to avoid CSV issues
       f.userId,
       f.sessionId
     ]);
@@ -1102,11 +1102,71 @@ export class FeedbackCollector {
   }
 
   private anonymizeContent(content: string): string {
+    // Ensure content is a string
+    const stringContent = this.ensureStringContent(content);
+    
     // Remove personally identifiable information
-    return content
+    return stringContent
       .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
       .replace(/\b\d{3}-?\d{3}-?\d{4}\b/g, '[PHONE]')
       .replace(/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/g, '[CARD]');
+  }
+
+  private ensureStringContent(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+    
+    if (content === null || content === undefined) {
+      return '';
+    }
+    
+    if (typeof content === 'object') {
+      return JSON.stringify(content);
+    }
+    
+    return String(content);
+  }
+
+  private getFlatAnalytics(analytics: FeedbackAnalytics): any {
+    const allFeedback = Array.from(this.feedbackStore.values());
+    const allMetrics = Array.from(this.interactionMetrics.values());
+    
+    // Create category breakdown
+    const categoryBreakdown: Record<string, number> = {};
+    allFeedback.forEach(f => {
+      categoryBreakdown[f.category] = (categoryBreakdown[f.category] || 0) + 1;
+    });
+
+    // Calculate simple trend
+    const ratingTrend = this.calculateSimpleTrend(analytics.trends.ratingTrend);
+
+    return {
+      // Flat properties for tests
+      totalFeedback: analytics.summary.totalFeedback,
+      averageRating: analytics.summary.averageRating,
+      satisfactionScore: analytics.performance.userSatisfaction,
+      categoryBreakdown,
+      totalInteractions: allMetrics.length,
+      improvementAreas: analytics.insights.weaknesses,
+      trends: { ...analytics.trends, ratingTrend },
+      insights: analytics.insights,
+      // Keep nested structure for compatibility
+      summary: analytics.summary,
+      performance: analytics.performance,
+      recommendations: analytics.recommendations
+    };
+  }
+
+  private calculateSimpleTrend(ratingTrend: { date: Date; averageRating: number }[]): string {
+    if (ratingTrend.length < 2) return 'stable';
+    
+    const first = ratingTrend[0].averageRating;
+    const last = ratingTrend[ratingTrend.length - 1].averageRating;
+    
+    if (last > first + 0.1) return 'improving';
+    if (last < first - 0.1) return 'declining';
+    return 'stable';
   }
 
   private simpleHash(str: string): string {
