@@ -1,205 +1,381 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { apiService, API_CONFIG } from '../config/api';
-import { voiceService } from '../services/voiceService';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { apiService, ApiError, NetworkError, TimeoutError } from '../config/api';
+import { useVoiceService } from '../services/voiceService';
 import './ChatInterface.css';
 
+// Types for better type safety
 interface Message {
   id: string;
-  text: string;
-  sender: 'user' | 'avatar';
-  timestamp: Date;
+  content: string;
+  timestamp: number;
+  sender: 'user' | 'assistant';
+  isTyping?: boolean;
+  error?: boolean;
 }
 
 interface ChatInterfaceProps {
-  onMessageSent?: (message: string) => void;
-  onVoiceToggle?: (isListening: boolean) => void;
-  isAvatarSpeaking?: boolean;
-  className?: string;
+  onMessageSent: (message: string) => void;
+  onVoiceToggle: (isListening: boolean) => void;
+  isAvatarSpeaking: boolean;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  onMessageSent,
-  onVoiceToggle,
-  isAvatarSpeaking = false,
-  className = ''
-}) => {
+// Memoized Message component for better performance
+const Message = React.memo<{ message: Message }>(({ message }) => {
+  const messageClass = useMemo(() => {
+    const baseClass = 'message';
+    const senderClass = message.sender === 'user' ? 'user' : 'assistant';
+    const errorClass = message.error ? 'error' : '';
+    return `${baseClass} ${senderClass} ${errorClass}`.trim();
+  }, [message.sender, message.error]);
+
+  const formattedTime = useMemo(() => {
+    return new Date(message.timestamp).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  }, [message.timestamp]);
+
+  return (
+    <div className={messageClass}>
+      <div className="message-content">
+        {message.isTyping ? (
+          <div className="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        ) : (
+          <p>{message.content}</p>
+        )}
+      </div>
+      <div className="message-time">{formattedTime}</div>
+    </div>
+  );
+});
+
+Message.displayName = 'Message';
+
+// Memoized typing indicator component
+const TypingIndicator = React.memo<{ isVisible: boolean }>(({ isVisible }) => {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="typing-indicator-container">
+      <div className="typing-indicator">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span className="typing-text">Assistant is typing...</span>
+    </div>
+  );
+});
+
+TypingIndicator.displayName = 'TypingIndicator';
+
+// Custom hook for chat state management
+const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
+    const newMessage: Message = {
+      ...message,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, newMessage]);
+    return newMessage.id;
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  return {
+    messages,
+    isTyping,
+    error,
+    setIsTyping,
+    setError,
+    addMessage,
+    clearError,
+  };
+};
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  onMessageSent, 
+  onVoiceToggle, 
+  isAvatarSpeaking 
+}) => {
+  const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  const {
+    messages,
+    isTyping,
+    error,
+    setIsTyping,
+    setError,
+    addMessage,
+    clearError,
+  } = useChat();
 
-  // Auto-scroll to bottom when new messages are added
-  useEffect(() => {
+  const {
+    isListening,
+    isSupported,
+    toggleListening,
+    transcript,
+    clearTranscript,
+    error: voiceError,
+  } = useVoiceService();
+
+  // Memoized scroll to bottom function
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Focus input on mount
-  useEffect(() => {
-    inputRef.current?.focus();
   }, []);
 
-  const addMessage = (text: string, sender: 'user' | 'avatar') => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      sender,
-      timestamp: new Date()
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  // Handle voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInputText(transcript);
+    }
+  }, [transcript]);
+
+  // Handle voice toggle callback
+  useEffect(() => {
+    onVoiceToggle(isListening);
+  }, [isListening, onVoiceToggle]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-    setMessages(prev => [...prev, newMessage]);
-  };
+  }, []);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  // Show avatar speaking indicator
+  useEffect(() => {
+    if (isAvatarSpeaking) {
+      console.log('Avatar is speaking...');
+    }
+  }, [isAvatarSpeaking]);
 
-    const userMessage = inputValue.trim();
-    setInputValue('');
-    addMessage(userMessage, 'user');
+  // Memoized input validation
+  const canSendMessage = useMemo(() => {
+    return inputText.trim().length > 0 && !isLoading && !isTyping;
+  }, [inputText, isLoading, isTyping]);
+
+  // Memoized error message
+  const displayError = useMemo(() => {
+    if (error) return error;
+    if (voiceError) return `Voice error: ${voiceError}`;
+    return null;
+  }, [error, voiceError]);
+
+  // Optimized message sending
+  const sendMessage = useCallback(async (messageText: string) => {
+    const trimmedMessage = messageText.trim();
+    if (!trimmedMessage) return;
+
+    // Clear any existing errors
+    clearError();
+    
+    // Add user message
+    addMessage({
+      content: trimmedMessage,
+      sender: 'user',
+    });
+
+    // Clear input and call parent callback
+    setInputText('');
+    onMessageSent(trimmedMessage);
+
+    // Set loading states
     setIsLoading(true);
+    setIsTyping(true);
 
     try {
-      // Call the callback to handle message sending
-      if (onMessageSent) {
-        onMessageSent(userMessage);
+      // Cancel any existing request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
+      
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
 
-      // Connect to the backend API
-      const data = await apiService.post(API_CONFIG.ENDPOINTS.CHAT, { 
-        message: userMessage 
+      // Send message to API
+      const response = await apiService.sendChatMessage(trimmedMessage, {
+        signal: abortControllerRef.current.signal,
       });
-      
-      const avatarResponse = data.response || 'Sorry, I could not generate a response.';
-      addMessage(avatarResponse, 'avatar');
-      
-      // Speak the avatar's response
-      if (voiceService.isSupported) {
-        try {
-          await voiceService.speak(avatarResponse);
-        } catch (error) {
-          console.error('Text-to-speech error:', error);
-        }
-      }
+
+      // Add assistant response
+      addMessage({
+        content: response.message,
+        sender: 'assistant',
+      });
+
     } catch (error) {
       console.error('Error sending message:', error);
-      addMessage('Sorry, there was a connection error. Please try again.', 'avatar');
+      
+      let errorMessage = 'Failed to send message. Please try again.';
+      
+      if (error instanceof ApiError) {
+        errorMessage = `API Error: ${error.message}`;
+      } else if (error instanceof NetworkError) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (error instanceof TimeoutError) {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, don't show error
+        return;
+      }
+
+      // Add error message
+      addMessage({
+        content: errorMessage,
+        sender: 'assistant',
+        error: true,
+      });
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setIsTyping(false);
+      abortControllerRef.current = null;
     }
-  };
+  }, [addMessage, clearError, onMessageSent]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // Optimized form submission
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (canSendMessage) {
+      sendMessage(inputText);
+    }
+  }, [inputText, canSendMessage, sendMessage]);
+
+  // Optimized input change
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+  }, []);
+
+  // Optimized voice toggle
+  const handleVoiceToggle = useCallback(() => {
+    toggleListening();
+    if (isListening) {
+      clearTranscript();
+    }
+  }, [toggleListening, isListening, clearTranscript]);
+
+  // Optimized key press handler
+  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (canSendMessage) {
+        sendMessage(inputText);
+      }
     }
-  };
+  }, [inputText, canSendMessage, sendMessage]);
 
-  const handleVoiceToggle = () => {
-    if (!voiceService.isSupported) {
-      alert('Voice functionality is not supported in this browser');
-      return;
-    }
+  // Memoized voice button class
+  const voiceButtonClass = useMemo(() => {
+    const baseClass = 'voice-button';
+    const activeClass = isListening ? 'active' : '';
+    const disabledClass = !isSupported ? 'disabled' : '';
+    return `${baseClass} ${activeClass} ${disabledClass}`.trim();
+  }, [isListening, isSupported]);
 
-    if (isListening) {
-      voiceService.stopListening();
-      setIsListening(false);
-    } else {
-      voiceService.startListening(
-        (transcript) => {
-          setInputValue(transcript);
-          setIsListening(false);
-        },
-        (error) => {
-          console.error('Voice recognition error:', error);
-          setIsListening(false);
-          alert('Voice recognition error: ' + error);
-        }
-      );
-      setIsListening(true);
-    }
-
-    if (onVoiceToggle) {
-      onVoiceToggle(!isListening);
-    }
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  // Memoized send button class
+  const sendButtonClass = useMemo(() => {
+    const baseClass = 'send-button';
+    const disabledClass = !canSendMessage ? 'disabled' : '';
+    return `${baseClass} ${disabledClass}`.trim();
+  }, [canSendMessage]);
 
   return (
-    <div className={`chat-interface ${className}`}>
+    <div className="chat-interface">
       <div className="chat-header">
-        <h3>Chat with Avatar</h3>
-        <div className="chat-status">
-          {isAvatarSpeaking && <span className="speaking-indicator">🔊 Avatar is speaking</span>}
-          {isListening && <span className="listening-indicator">🎤 Listening...</span>}
+        <h3>Chat with AI Avatar</h3>
+        <div className="connection-status">
+          <span className={`status-indicator ${isLoading ? 'loading' : 'connected'}`} />
+          <span className="status-text">
+            {isLoading ? 'Sending...' : 'Connected'}
+          </span>
         </div>
       </div>
 
       <div className="messages-container">
-        {messages.length === 0 ? (
-          <div className="welcome-message">
-            <p>👋 Hi! I'm your AI avatar. Ask me anything!</p>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <div
+        <div className="messages">
+          {messages.map((message) => (
+            <Message
               key={message.id}
-              className={`message ${message.sender === 'user' ? 'user-message' : 'avatar-message'}`}
-            >
-              <div className="message-content">
-                <div className="message-text">{message.text}</div>
-                <div className="message-time">{formatTime(message.timestamp)}</div>
-              </div>
-            </div>
-          ))
-        )}
-        {isLoading && (
-          <div className="message avatar-message">
-            <div className="message-content">
-              <div className="message-text typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-        )}
+              message={message}
+            />
+          ))}
+          <TypingIndicator isVisible={isTyping} />
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="input-container">
-        <div className="input-row">
+      {displayError && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          <span>{displayError}</span>
+          <button onClick={clearError} className="error-dismiss">×</button>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="input-form">
+        <div className="input-container">
           <input
             ref={inputRef}
             type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={inputText}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
+            placeholder={isListening ? 'Listening...' : 'Type your message...'}
             disabled={isLoading}
             className="message-input"
+            maxLength={1000}
           />
-          <button
-            onClick={handleVoiceToggle}
-            className={`voice-button ${isListening ? 'listening' : ''}`}
-            title={isListening ? 'Stop listening' : 'Start voice input'}
-          >
-            🎤
-          </button>
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
-            className="send-button"
-          >
-            {isLoading ? '⏳' : '➤'}
-          </button>
+          
+          <div className="input-actions">
+            {isSupported && (
+              <button
+                type="button"
+                onClick={handleVoiceToggle}
+                className={voiceButtonClass}
+                disabled={isLoading}
+                title={isListening ? 'Stop listening' : 'Start voice input'}
+              >
+                {isListening ? '🔴' : '🎤'}
+              </button>
+            )}
+            
+            <button
+              type="submit"
+              disabled={!canSendMessage}
+              className={sendButtonClass}
+              title="Send message"
+            >
+              {isLoading ? '⏳' : '➤'}
+            </button>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
 
-export default ChatInterface; 
+export default React.memo(ChatInterface); 

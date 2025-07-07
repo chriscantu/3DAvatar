@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ThreeDRoom from './components/ThreeDRoom';
 import ChatInterface from './components/ChatInterface';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const App: React.FC = () => {
@@ -22,19 +23,67 @@ const App: React.FC = () => {
     // This will be implemented when voice functionality is added
   };
 
+  const handleError = (error: Error) => {
+    // Log errors for monitoring
+    console.error('App Error:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    });
+    
+    // In production, send to error reporting service
+    // Example: Sentry.captureException(error);
+  };
+
   return (
-    <div className="app">
-      <div className="room-container">
-        <ThreeDRoom isAvatarSpeaking={isAvatarSpeaking} />
+    <ErrorBoundary onError={handleError}>
+      <div className="app">
+        <div className="room-container">
+          <ErrorBoundary 
+            onError={handleError}
+            fallback={
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                background: '#222',
+                color: 'white',
+                fontSize: '1.2rem'
+              }}>
+                🎮 3D Room temporarily unavailable
+              </div>
+            }
+          >
+            <ThreeDRoom isAvatarSpeaking={isAvatarSpeaking} />
+          </ErrorBoundary>
+        </div>
+        <div className="chat-container">
+          <ErrorBoundary 
+            onError={handleError}
+            fallback={
+              <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                borderRadius: '8px',
+                margin: '1rem'
+              }}>
+                💬 Chat temporarily unavailable. Please refresh the page.
+              </div>
+            }
+          >
+            <ChatInterface
+              onMessageSent={handleMessageSent}
+              onVoiceToggle={handleVoiceToggle}
+              isAvatarSpeaking={isAvatarSpeaking}
+            />
+          </ErrorBoundary>
+        </div>
       </div>
-      <div className="chat-container">
-        <ChatInterface
-          onMessageSent={handleMessageSent}
-          onVoiceToggle={handleVoiceToggle}
-          isAvatarSpeaking={isAvatarSpeaking}
-        />
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
