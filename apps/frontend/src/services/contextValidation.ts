@@ -331,13 +331,16 @@ export class ContextValidator {
       // Validate personality traits
       const traits = systemContext.avatarPersonality.traits;
       if (traits) {
+        // Check all traits (both known and unknown)
         Object.entries(traits).forEach(([trait, value]) => {
-          checks++;
-          if (typeof value === 'number' && (value < 0 || value > 1)) {
-            errors.push(this.createError(`system.avatarPersonality.traits.${trait}`, 'range_error', 
-              `Trait ${trait} must be between 0 and 1`, 'medium', value, '0-1 range'));
-          } else {
-            passed++;
+          if (typeof value === 'number') {
+            checks++;
+            if (value < 0 || value > 1) {
+              errors.push(this.createError(`system.avatarPersonality.traits.${trait}`, 'range_error', 
+                `Trait ${trait} must be between 0 and 1`, 'high', value, '0-1 range'));
+            } else {
+              passed++;
+            }
           }
         });
       }
@@ -517,7 +520,7 @@ export class ContextValidator {
         checks++;
         if (typeof flowState.momentum === 'number' && (flowState.momentum < 0 || flowState.momentum > 1)) {
           errors.push(this.createError('immediate.conversationFlow.flowState.momentum', 'range_error', 
-            'Flow state momentum must be between 0 and 1', 'medium', flowState.momentum, '0-1 range'));
+            'Flow state momentum must be between 0 and 1', 'high', flowState.momentum, '0-1 range'));
         } else {
           passed++;
         }
@@ -526,7 +529,7 @@ export class ContextValidator {
         checks++;
         if (typeof flowState.depth === 'number' && (flowState.depth < 0 || flowState.depth > 1)) {
           errors.push(this.createError('immediate.conversationFlow.flowState.depth', 'range_error', 
-            'Flow state depth must be between 0 and 1', 'medium', flowState.depth, '0-1 range'));
+            'Flow state depth must be between 0 and 1', 'high', flowState.depth, '0-1 range'));
         } else {
           passed++;
         }
@@ -535,7 +538,7 @@ export class ContextValidator {
         checks++;
         if (typeof flowState.engagement === 'number' && (flowState.engagement < 0 || flowState.engagement > 1)) {
           errors.push(this.createError('immediate.conversationFlow.flowState.engagement', 'range_error', 
-            'Flow state engagement must be between 0 and 1', 'medium', flowState.engagement, '0-1 range'));
+            'Flow state engagement must be between 0 and 1', 'high', flowState.engagement, '0-1 range'));
         } else {
           passed++;
         }
@@ -544,7 +547,7 @@ export class ContextValidator {
         checks++;
         if (typeof flowState.clarity === 'number' && (flowState.clarity < 0 || flowState.clarity > 1)) {
           errors.push(this.createError('immediate.conversationFlow.flowState.clarity', 'range_error', 
-            'Flow state clarity must be between 0 and 1', 'medium', flowState.clarity, '0-1 range'));
+            'Flow state clarity must be between 0 and 1', 'high', flowState.clarity, '0-1 range'));
         } else {
           passed++;
         }
@@ -1217,14 +1220,14 @@ export class ContextValidator {
 
   private mapWarningToHealthType(warningType: ValidationWarningType): 'data_quality' | 'performance' | 'consistency' | 'security' {
     switch (warningType) {
-      case 'performance_concern':
-        return 'performance';
       case 'suboptimal_value':
       case 'deprecated_field':
         return 'data_quality';
-      case 'potential_issue':
-        return 'consistency';
+      case 'performance_concern':
+        return 'performance';
       case 'best_practice_violation':
+        return 'consistency';
+      case 'potential_issue':
         return 'security';
       default:
         return 'data_quality';
