@@ -110,7 +110,7 @@ export interface ContextHealthCheck {
   healthScore: number; // 0-1
   issues: HealthIssue[];
   performance: PerformanceMetrics;
-  recommendations: string[];
+  recommendations: Array<{ issue: string; recommendation: string; priority: string }>;
   overall: 'healthy' | 'warning' | 'critical';
   score: number;
   categories: {
@@ -203,11 +203,14 @@ export class ContextValidator {
     const rulesApplied: string[] = [];
 
     try {
-      // Validate system context
-      if (!context.system) {
+      // Validate basic structure and types first
+      checksPerformed++;
+      if (typeof context.system === 'string' || typeof context.system === 'number') {
+        errors.push(this.createError('system', 'type_error', 'System context must be an object', 'critical', typeof context.system, 'object'));
+      } else if (!context.system) {
         errors.push(this.createError('system', 'missing_required', 'System context is required', 'critical'));
-        checksPerformed++;
       } else {
+        checksPassed++;
         const systemResult = this.validateSystemContext(context.system);
         errors.push(...systemResult.errors);
         warnings.push(...systemResult.warnings);
@@ -216,11 +219,14 @@ export class ContextValidator {
         rulesApplied.push('system_validation');
       }
 
-      // Validate session context
-      if (!context.session) {
+      // Validate session context with type checking
+      checksPerformed++;
+      if (typeof context.session === 'string' || typeof context.session === 'number') {
+        errors.push(this.createError('session', 'type_error', 'Session context must be an object', 'critical', typeof context.session, 'object'));
+      } else if (!context.session) {
         errors.push(this.createError('session', 'missing_required', 'Session context is required', 'critical'));
-        checksPerformed++;
       } else {
+        checksPassed++;
         const sessionResult = this.validateSessionContext(context.session);
         errors.push(...sessionResult.errors);
         warnings.push(...sessionResult.warnings);
@@ -229,17 +235,30 @@ export class ContextValidator {
         rulesApplied.push('session_validation');
       }
 
-      // Validate immediate context
-      if (!context.immediate) {
+      // Validate immediate context with type checking
+      checksPerformed++;
+      if (typeof context.immediate === 'string' || typeof context.immediate === 'number') {
+        errors.push(this.createError('immediate', 'type_error', 'Immediate context must be an object', 'critical', typeof context.immediate, 'object'));
+      } else if (!context.immediate) {
         errors.push(this.createError('immediate', 'missing_required', 'Immediate context is required', 'critical'));
-        checksPerformed++;
       } else {
+        checksPassed++;
         const immediateResult = this.validateImmediateContext(context.immediate);
         errors.push(...immediateResult.errors);
         warnings.push(...immediateResult.warnings);
         checksPerformed += immediateResult.summary.totalChecks;
         checksPassed += immediateResult.summary.passedChecks;
         rulesApplied.push('immediate_validation');
+      }
+
+      // Validate timestamp type
+      checksPerformed++;
+      if (typeof context.timestamp === 'number') {
+        errors.push(this.createError('timestamp', 'type_error', 'Timestamp must be a string', 'medium', typeof context.timestamp, 'string'));
+      } else if (!context.timestamp) {
+        errors.push(this.createError('timestamp', 'missing_required', 'Timestamp is required', 'medium'));
+      } else {
+        checksPassed++;
       }
 
       // Validate cross-context consistency
@@ -315,7 +334,7 @@ export class ContextValidator {
         Object.entries(traits).forEach(([trait, value]) => {
           checks++;
           if (typeof value === 'number' && (value < 0 || value > 1)) {
-            errors.push(this.createError(`system.avatarPersonality.traits.${trait}`, 'out_of_range', 
+            errors.push(this.createError(`system.avatarPersonality.traits.${trait}`, 'range_error', 
               `Trait ${trait} must be between 0 and 1`, 'medium', value, '0-1 range'));
           } else {
             passed++;
@@ -354,41 +373,61 @@ export class ContextValidator {
     let checks = 0;
     let passed = 0;
 
-    // Validate session ID
+    // Validate session ID type and value
     checks++;
-    if (!sessionContext.sessionId || sessionContext.sessionId.trim() === '') {
+    if (typeof sessionContext.sessionId === 'number') {
+      errors.push(this.createError('session.sessionId', 'type_error', 'Session ID must be a string', 'critical', typeof sessionContext.sessionId, 'string'));
+    } else if (!sessionContext.sessionId || sessionContext.sessionId.trim() === '') {
       errors.push(this.createError('session.sessionId', 'missing_required', 'Session ID is required', 'critical'));
     } else {
       passed++;
     }
 
-    // Validate user profile
+    // Validate user profile type
     checks++;
-    if (!sessionContext.userProfile) {
+    if (typeof sessionContext.userProfile === 'string') {
+      errors.push(this.createError('session.userProfile', 'type_error', 'User profile must be an object', 'high', typeof sessionContext.userProfile, 'object'));
+    } else if (!sessionContext.userProfile) {
       errors.push(this.createError('session.userProfile', 'missing_required', 'User profile is required', 'high'));
     } else {
       passed++;
       
-      // Validate user ID
-      checks++;
-      if (!sessionContext.userProfile.userId) {
-        errors.push(this.createError('session.userProfile.userId', 'missing_required', 'User ID is required', 'critical'));
-      } else {
-        passed++;
+      // Validate user profile structure
+      if (sessionContext.userProfile) {
+        checks++;
+        if (!sessionContext.userProfile.userId) {
+          errors.push(this.createError('session.userProfile.userId', 'missing_required', 'User ID is required', 'critical'));
+        } else {
+          passed++;
+        }
       }
     }
 
-    // Validate message count
+    // Validate session objectives type
     checks++;
-    if (sessionContext.messageCount < 0) {
-      errors.push(this.createError('session.messageCount', 'out_of_range', 'Message count cannot be negative', 'medium'));
+    if (typeof sessionContext.sessionObjectives === 'string') {
+      errors.push(this.createError('session.sessionObjectives', 'type_error', 'Session objectives must be an array', 'medium', typeof sessionContext.sessionObjectives, 'array'));
+    } else if (!Array.isArray(sessionContext.sessionObjectives)) {
+      errors.push(this.createError('session.sessionObjectives', 'missing_required', 'Session objectives are required', 'medium'));
     } else {
       passed++;
     }
 
-    // Validate start time
+    // Validate conversation themes type
     checks++;
-    if (!sessionContext.startTime || isNaN(sessionContext.startTime.getTime())) {
+    if (typeof sessionContext.conversationThemes === 'string') {
+      errors.push(this.createError('session.conversationThemes', 'type_error', 'Conversation themes must be an array', 'medium', typeof sessionContext.conversationThemes, 'array'));
+    } else if (!Array.isArray(sessionContext.conversationThemes)) {
+      errors.push(this.createError('session.conversationThemes', 'missing_required', 'Conversation themes are required', 'medium'));
+    } else {
+      passed++;
+    }
+
+    // Validate start time type
+    checks++;
+    if (typeof sessionContext.startTime === 'string') {
+      errors.push(this.createError('session.startTime', 'type_error', 'Start time must be a Date object', 'medium', typeof sessionContext.startTime, 'Date'));
+    } else if (!sessionContext.startTime || isNaN(sessionContext.startTime.getTime())) {
       errors.push(this.createError('session.startTime', 'invalid_format', 'Start time must be a valid date', 'medium'));
     } else {
       passed++;
@@ -398,6 +437,16 @@ export class ContextValidator {
         warnings.push(this.createWarning('session.startTime', 'suboptimal_value', 
           'Start time is in the future', 'quality', 'Verify the session start time is correct'));
       }
+    }
+
+    // Validate message count type and range
+    checks++;
+    if (typeof sessionContext.messageCount === 'string') {
+      errors.push(this.createError('session.messageCount', 'type_error', 'Message count must be a number', 'medium', typeof sessionContext.messageCount, 'number'));
+    } else if (sessionContext.messageCount < 0) {
+      errors.push(this.createError('session.messageCount', 'range_error', 'Message count cannot be negative', 'medium', sessionContext.messageCount, '>= 0'));
+    } else {
+      passed++;
     }
 
     return this.createValidationResult(errors, warnings, checks, passed);
@@ -412,10 +461,12 @@ export class ContextValidator {
     let checks = 0;
     let passed = 0;
 
-    // Validate recent messages
+    // Validate recent messages type
     checks++;
-    if (!Array.isArray(immediateContext.recentMessages)) {
-      errors.push(this.createError('immediate.recentMessages', 'invalid_type', 'Recent messages must be an array', 'high'));
+    if (typeof immediateContext.recentMessages === 'string') {
+      errors.push(this.createError('immediate.recentMessages', 'type_error', 'Recent messages must be an array', 'high', typeof immediateContext.recentMessages, 'array'));
+    } else if (!Array.isArray(immediateContext.recentMessages)) {
+      errors.push(this.createError('immediate.recentMessages', 'type_error', 'Recent messages must be an array', 'high'));
     } else {
       passed++;
       
@@ -441,33 +492,80 @@ export class ContextValidator {
     // Validate current user emotion
     checks++;
     const validEmotions = ['happy', 'sad', 'excited', 'calm', 'frustrated', 'confused', 'curious', 'neutral'];
-    if (!validEmotions.includes(immediateContext.currentUserEmotion)) {
+    if (!validEmotions.includes(immediateContext.currentUserEmotion as string)) {
       errors.push(this.createError('immediate.currentUserEmotion', 'invalid_format', 
         'Invalid emotion state', 'low', immediateContext.currentUserEmotion, validEmotions.join(', ')));
     } else {
       passed++;
     }
 
-    // Validate conversation flow
+    // Validate conversation flow type
     checks++;
-    if (!immediateContext.conversationFlow) {
+    if (typeof immediateContext.conversationFlow === 'string') {
+      errors.push(this.createError('immediate.conversationFlow', 'type_error', 'Conversation flow must be an object', 'medium', typeof immediateContext.conversationFlow, 'object'));
+    } else if (!immediateContext.conversationFlow) {
       errors.push(this.createError('immediate.conversationFlow', 'missing_required', 
         'Conversation flow is required', 'medium'));
     } else {
       passed++;
+      
+      // Validate flow state ranges
+      if (immediateContext.conversationFlow.flowState) {
+        const flowState = immediateContext.conversationFlow.flowState;
+        
+        // Validate momentum range
+        checks++;
+        if (typeof flowState.momentum === 'number' && (flowState.momentum < 0 || flowState.momentum > 1)) {
+          errors.push(this.createError('immediate.conversationFlow.flowState.momentum', 'range_error', 
+            'Flow state momentum must be between 0 and 1', 'medium', flowState.momentum, '0-1 range'));
+        } else {
+          passed++;
+        }
+        
+        // Validate depth range
+        checks++;
+        if (typeof flowState.depth === 'number' && (flowState.depth < 0 || flowState.depth > 1)) {
+          errors.push(this.createError('immediate.conversationFlow.flowState.depth', 'range_error', 
+            'Flow state depth must be between 0 and 1', 'medium', flowState.depth, '0-1 range'));
+        } else {
+          passed++;
+        }
+        
+        // Validate engagement range
+        checks++;
+        if (typeof flowState.engagement === 'number' && (flowState.engagement < 0 || flowState.engagement > 1)) {
+          errors.push(this.createError('immediate.conversationFlow.flowState.engagement', 'range_error', 
+            'Flow state engagement must be between 0 and 1', 'medium', flowState.engagement, '0-1 range'));
+        } else {
+          passed++;
+        }
+        
+        // Validate clarity range
+        checks++;
+        if (typeof flowState.clarity === 'number' && (flowState.clarity < 0 || flowState.clarity > 1)) {
+          errors.push(this.createError('immediate.conversationFlow.flowState.clarity', 'range_error', 
+            'Flow state clarity must be between 0 and 1', 'medium', flowState.clarity, '0-1 range'));
+        } else {
+          passed++;
+        }
+      }
     }
 
-    // Validate active topics
+    // Validate active topics type
     checks++;
-    if (!Array.isArray(immediateContext.activeTopics)) {
-      errors.push(this.createError('immediate.activeTopics', 'invalid_type', 'Active topics must be an array', 'low'));
+    if (typeof immediateContext.activeTopics === 'string') {
+      errors.push(this.createError('immediate.activeTopics', 'type_error', 'Active topics must be an array', 'low', typeof immediateContext.activeTopics, 'array'));
+    } else if (!Array.isArray(immediateContext.activeTopics)) {
+      errors.push(this.createError('immediate.activeTopics', 'type_error', 'Active topics must be an array', 'low'));
     } else {
       passed++;
     }
 
-    // Validate environment data
+    // Validate environment data type
     checks++;
-    if (!immediateContext.environmentData) {
+    if (typeof immediateContext.environmentData === 'string') {
+      errors.push(this.createError('immediate.environmentData', 'type_error', 'Environment data must be an object', 'low', typeof immediateContext.environmentData, 'object'));
+    } else if (!immediateContext.environmentData) {
       errors.push(this.createError('immediate.environmentData', 'missing_required', 
         'Environment data is required', 'low'));
     } else {
@@ -497,7 +595,7 @@ export class ContextValidator {
       const sessionTime = context.session.startTime;
       
       if (contextTime < sessionTime) {
-        errors.push(this.createError('context.timestamp', 'inconsistent_data', 
+        errors.push(this.createError('context.timestamp', 'consistency_error', 
           'Context timestamp is before session start time', 'medium'));
       }
     }
@@ -508,9 +606,8 @@ export class ContextValidator {
     const reportedMessageCount = context.session.messageCount;
     
     if (actualMessageCount > reportedMessageCount) {
-      warnings.push(this.createWarning('context.messageCount', 'potential_issue',
-        'Recent messages count exceeds reported session message count', 'quality',
-        'Verify message counting logic'));
+      errors.push(this.createError('context.messageCount', 'consistency_error',
+        'Recent messages count exceeds reported session message count', 'medium'));
     } else {
       passed++;
     }
@@ -544,14 +641,32 @@ export class ContextValidator {
       
       checks++;
       try {
-        const result = rule.validator(context);
-        if (result) {
-          if (result.errors.length > 0) {
-            errors.push(...result.errors);
+        // Support both old 'validate' method and new 'validator' method
+        if (rule.validate) {
+          const result = rule.validate(context);
+          if (!result.isValid && result.error) {
+            const error = result.error as { field?: string; type?: ValidationErrorType; message?: string; severity?: string };
+            errors.push(this.createError(
+              error.field || rule.id,
+              error.type || 'custom_error',
+              error.message || 'Custom validation failed',
+              (error.severity as 'low' | 'medium' | 'high' | 'critical') || 'medium'
+            ));
           } else {
             passed++;
           }
-          warnings.push(...result.warnings);
+        } else if (rule.validator) {
+          const result = rule.validator(context);
+          if (result) {
+            if (result.errors.length > 0) {
+              errors.push(...result.errors);
+            } else {
+              passed++;
+            }
+            warnings.push(...result.warnings);
+          } else {
+            passed++;
+          }
         } else {
           passed++;
         }
@@ -570,6 +685,7 @@ export class ContextValidator {
   performHealthCheck(context: Context): ContextHealthCheck {
     const validation = this.validateContext(context);
     const issues: HealthIssue[] = [];
+    const recommendations: Array<{ issue: string; recommendation: string; priority: string }> = [];
     
     // Convert errors to health issues
     validation.errors.forEach(error => {
@@ -581,6 +697,13 @@ export class ContextValidator {
         affectedComponents: [error.field],
         resolution: error.suggestion || 'Review and fix the identified issue',
         category: healthType
+      });
+      
+      // Add recommendation
+      recommendations.push({
+        issue: error.message,
+        recommendation: error.suggestion || 'Review and fix the identified issue',
+        priority: error.severity
       });
     });
 
@@ -595,7 +718,49 @@ export class ContextValidator {
         resolution: warning.suggestion,
         category: healthType
       });
+      
+      // Add recommendation
+      recommendations.push({
+        issue: warning.message,
+        recommendation: warning.suggestion,
+        priority: 'warning'
+      });
     });
+
+    // Add data quality recommendations for empty arrays
+    if (context.immediate && Array.isArray(context.immediate.recentMessages) && context.immediate.recentMessages.length === 0) {
+      issues.push({
+        type: 'data_quality',
+        severity: 'warning',
+        description: 'No recent messages available',
+        affectedComponents: ['immediate.recentMessages'],
+        resolution: 'Add recent messages to improve context quality',
+        category: 'data_quality'
+      });
+      
+      recommendations.push({
+        issue: 'No recent messages available',
+        recommendation: 'Add recent messages to improve context quality',
+        priority: 'medium'
+      });
+    }
+
+    if (context.immediate && Array.isArray(context.immediate.activeTopics) && context.immediate.activeTopics.length === 0) {
+      issues.push({
+        type: 'data_quality',
+        severity: 'warning',
+        description: 'No active topics available',
+        affectedComponents: ['immediate.activeTopics'],
+        resolution: 'Add active topics to improve context relevance',
+        category: 'data_quality'
+      });
+      
+      recommendations.push({
+        issue: 'No active topics available',
+        recommendation: 'Add active topics to improve context relevance',
+        priority: 'medium'
+      });
+    }
 
     // Calculate categories
     const categories = {
@@ -624,7 +789,7 @@ export class ContextValidator {
         cacheHitRate: 0, // Would need cache statistics
         validationOverhead: validation.summary.validationTime
       },
-      recommendations: validation.recommendations.map(r => r.action),
+      recommendations: recommendations,
       overall,
       score: validation.score,
       categories,
@@ -636,7 +801,19 @@ export class ContextValidator {
    * Add custom validation rule
    */
   addValidationRule(rule: ValidationRule): void {
-    this.rules.set(rule.id, rule);
+    // Ensure all required properties are present with defaults
+    const fullRule: ValidationRule = {
+      id: rule.id || rule.name || `rule_${Date.now()}`,
+      name: rule.name,
+      description: rule.description,
+      category: rule.category || 'required',
+      severity: rule.severity || 'error',
+      enabled: rule.enabled !== undefined ? rule.enabled : true,
+      validator: rule.validator || (() => null),
+      validate: rule.validate
+    };
+    
+    this.rules.set(fullRule.id, fullRule);
   }
 
   /**
@@ -995,10 +1172,10 @@ export class ContextValidator {
     if (!message || typeof message !== 'object') return false;
     
     const msg = message as Record<string, unknown>;
-    return typeof msg.id === 'string' &&
-           typeof msg.content === 'string' &&
-           typeof msg.sender === 'string' &&
-           typeof msg.timestamp === 'number';
+    return typeof msg.id === 'string' && msg.id.length > 0 &&
+           typeof msg.content === 'string' && msg.content.length > 0 &&
+           (typeof msg.role === 'string' || typeof msg.sender === 'string') &&
+           (typeof msg.timestamp === 'string' || typeof msg.timestamp === 'number');
   }
 
   private calculateContextSize(context: Context): number {
