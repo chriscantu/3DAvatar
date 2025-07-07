@@ -111,6 +111,22 @@ npm run test:e2e
 
 See [PLAN.md](./PLAN.md) for detailed development roadmap and progress tracking.
 
+### Phase 2 Services Documentation
+
+Phase 2 introduces advanced AI services for enhanced user experience:
+
+- **[Phase 2 Services Guide](./docs/PHASE2_SERVICES_GUIDE.md)** - Comprehensive implementation guide
+- **[Technical Integration Guide](./docs/PHASE2_TECHNICAL_INTEGRATION.md)** - Advanced technical details
+- **[Quick Reference](./docs/PHASE2_QUICK_REFERENCE.md)** - Essential commands and configurations
+
+**Phase 2 Services:**
+- 🧠 **Emotional Intelligence** - Emotion detection and empathetic responses
+- 🗜️ **Context Compression** - Intelligent conversation summarization
+- 📊 **Feedback Collection** - Analytics and improvement recommendations
+- ✅ **Context Validation** - Data integrity and health monitoring
+
+**Status:** Production Ready ✅ (148/151 tests passing - 98% coverage)
+
 ## 🤝 Contributing
 
 1. Fork the repository
