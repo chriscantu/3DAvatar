@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mock DOM APIs for testing environment
+Element.prototype.scrollIntoView = vi.fn();
+
 // Mock Three.js for testing
 vi.mock('three', () => ({
   WebGLRenderer: vi.fn().mockImplementation(() => ({

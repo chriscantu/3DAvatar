@@ -46,6 +46,10 @@ This document provides a comprehensive architectural overview of the 3DAvatar ap
 
 ```
 App.tsx (ErrorBoundary wrapped)
+├── App Header
+│   ├── Title
+│   ├── Settings Button
+│   └── User Preferences Display
 ├── ErrorBoundary (Global)
 │   ├── Error fallback UI
 │   ├── Retry functionality
@@ -87,23 +91,49 @@ App.tsx (ErrorBoundary wrapped)
 │   │           ├── Tail Wagging (context-aware)
 │   │           └── Mouth Movement (realistic)
 │   └── OrbitControls
-└── ChatInterface.tsx (React.memo + ErrorBoundary)
-    ├── useChat Hook
-    │   ├── Message state management
-    │   ├── Error handling
-    │   └── Optimized updates
-    ├── useVoiceService Hook
-    │   ├── Speech recognition
-    │   ├── Error handling
-    │   ├── Timeout management
-    │   └── Cleanup on unmount
-    ├── Memoized Components
-    │   ├── Message (React.memo)
-    │   └── TypingIndicator (React.memo)
-    ├── Message History
-    ├── Text Input (optimized)
-    ├── Voice Controls (enhanced)
-    └── Status Indicators
+├── ChatInterface.tsx (React.memo + ErrorBoundary)
+│   ├── useChat Hook
+│   │   ├── Message state management
+│   │   ├── Error handling
+│   │   └── Optimized updates
+│   ├── useVoiceService Hook
+│   │   ├── Speech recognition
+│   │   ├── Error handling
+│   │   ├── Timeout management
+│   │   └── Cleanup on unmount
+│   ├── Memoized Components
+│   │   ├── Message (React.memo)
+│   │   └── TypingIndicator (React.memo)
+│   ├── Message History
+│   ├── Text Input (optimized)
+│   ├── Voice Controls (enhanced)
+│   ├── Status Indicators
+│   └── Accessibility Features
+│       ├── ARIA Labels
+│       ├── Keyboard Navigation
+│       ├── Screen Reader Support
+│       └── Focus Management
+└── Settings.tsx (Modal Component)
+    ├── Settings Management
+    │   ├── Theme Control (Light/Dark/Auto)
+    │   ├── Voice Preferences
+    │   ├── Animation Settings
+    │   ├── Accessibility Options
+    │   └── General Preferences
+    ├── User Interface
+    │   ├── Modal Dialog
+    │   ├── Grouped Settings
+    │   ├── Real-time Preview
+    │   └── Save/Reset Actions
+    ├── Persistence
+    │   ├── localStorage Integration
+    │   ├── Settings Validation
+    │   └── Change Detection
+    └── Accessibility
+        ├── Keyboard Navigation
+        ├── Focus Management
+        ├── Screen Reader Support
+        └── High Contrast Support
 ```
 
 ### Enhanced Data Flow
@@ -116,6 +146,7 @@ App.tsx (ErrorBoundary wrapped)
 │ • Voice Input   │    │ • useCallback() │    │ • isSpeaking    │
 │ • Click Events  │    │ • useMemo()     │    │ • isListening   │
 │ • Error Events  │    │ • ErrorBoundary │    │ • error states  │
+│ • Settings      │    │ • Accessibility │    │ • userSettings  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │                       │
                                 ▼                       ▼
@@ -127,6 +158,17 @@ App.tsx (ErrorBoundary wrapped)
 │ • Error Handle  │    │ • Timeout Mgmt  │    │ • isSpeaking    │
 │ • Cleanup       │    │ • AbortController│    │ • Animations    │
 │ • State Mgmt    │    │ • Custom Errors │    │ • Memory Mgmt   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Settings      │    │  Accessibility  │    │   User Prefs    │
+│   Component     │    │   Features      │    │   Management    │
+│                 │    │                 │    │                 │
+│ • Theme Mgmt    │    │ • ARIA Labels   │    │ • LocalStorage  │
+│ • Voice Prefs   │    │ • Keyboard Nav  │    │ • Theme Apply   │
+│ • Animation     │    │ • Screen Reader │    │ • Real-time     │
+│ • Accessibility │    │ • Focus Mgmt    │    │   Updates       │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 

@@ -36,10 +36,15 @@ const Message = React.memo<{ message: Message }>(({ message }) => {
   }, [message.timestamp]);
 
   return (
-    <div className={messageClass}>
+    <div 
+      className={messageClass}
+      role="log"
+      aria-live="polite"
+      aria-label={`${message.sender === 'user' ? 'You' : 'Assistant'} said: ${message.content}`}
+    >
       <div className="message-content">
         {message.isTyping ? (
-          <div className="typing-indicator">
+          <div className="typing-indicator" aria-label="Assistant is typing">
             <span></span>
             <span></span>
             <span></span>
@@ -48,7 +53,9 @@ const Message = React.memo<{ message: Message }>(({ message }) => {
           <p>{message.content}</p>
         )}
       </div>
-      <div className="message-time">{formattedTime}</div>
+      <div className="message-time" aria-label={`Sent at ${formattedTime}`}>
+        {formattedTime}
+      </div>
     </div>
   );
 });
@@ -304,19 +311,38 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [canSendMessage]);
 
   return (
-    <div className="chat-interface">
+    <div className="chat-interface" role="main" aria-label="Chat interface">
       <div className="chat-header">
-        <h3>Chat with AI Avatar</h3>
-        <div className="connection-status">
-          <span className={`status-indicator ${isLoading ? 'loading' : 'connected'}`} />
+        <h3 id="chat-title">Chat with AI Avatar</h3>
+        <div className="connection-status" aria-live="polite">
+          <span 
+            className={`status-indicator ${isLoading ? 'loading' : 'connected'}`}
+            aria-hidden="true"
+          />
           <span className="status-text">
             {isLoading ? 'Sending...' : 'Connected'}
           </span>
         </div>
       </div>
 
-      <div className="messages-container">
+      <div 
+        className="messages-container"
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'End') {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }
+        }}
+      >
         <div className="messages">
+          {messages.length === 0 && (
+            <div className="welcome-message" role="status">
+              👋 Welcome! Start a conversation with your AI avatar. You can type or use voice input.
+            </div>
+          )}
           {messages.map((message) => (
             <Message
               key={message.id}
@@ -329,16 +355,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {displayError && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
+        <div 
+          className="error-message"
+          role="alert"
+          aria-live="assertive"
+        >
+          <span className="error-icon" aria-hidden="true">⚠️</span>
           <span>{displayError}</span>
-          <button onClick={clearError} className="error-dismiss">×</button>
+          <button 
+            onClick={clearError} 
+            className="error-dismiss"
+            aria-label="Dismiss error message"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="input-form">
+      <form 
+        onSubmit={handleSubmit} 
+        className="input-form"
+        role="form"
+        aria-labelledby="chat-title"
+      >
         <div className="input-container">
+          <label htmlFor="message-input" className="sr-only">
+            {isListening ? 'Listening for voice input...' : 'Type your message'}
+          </label>
           <input
+            id="message-input"
             ref={inputRef}
             type="text"
             value={inputText}
@@ -348,18 +393,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             disabled={isLoading}
             className="message-input"
             maxLength={1000}
+            aria-describedby={displayError ? 'error-message' : undefined}
+            aria-required="true"
           />
           
-          <div className="input-actions">
+          <div className="input-actions" role="group" aria-label="Message actions">
             {isSupported && (
               <button
                 type="button"
                 onClick={handleVoiceToggle}
                 className={voiceButtonClass}
                 disabled={isLoading}
-                title={isListening ? 'Stop listening' : 'Start voice input'}
+                aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                aria-pressed={isListening}
               >
-                {isListening ? '🔴' : '🎤'}
+                <span aria-hidden="true">{isListening ? '🔴' : '🎤'}</span>
               </button>
             )}
             
@@ -367,9 +415,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               type="submit"
               disabled={!canSendMessage}
               className={sendButtonClass}
-              title="Send message"
+              aria-label="Send message"
             >
-              {isLoading ? '⏳' : '➤'}
+              <span aria-hidden="true">{isLoading ? '⏳' : '➤'}</span>
             </button>
           </div>
         </div>

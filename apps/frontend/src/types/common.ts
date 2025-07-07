@@ -211,4 +211,21 @@ export interface Environment {
   API_URL: string;
   DEBUG_MODE: boolean;
   FEATURE_FLAGS: FeatureFlags;
+}
+
+/**
+ * User Settings types
+ */
+export interface UserSettings {
+  theme: 'light' | 'dark' | 'auto';
+  voiceEnabled: boolean;
+  voiceSpeed: number;
+  voiceVolume: number;
+  animationSpeed: number;
+  reducedMotion: boolean;
+  fontSize: 'small' | 'medium' | 'large';
+  highContrast: boolean;
+  autoScroll: boolean;
+  soundEffects: boolean;
+  notifications: boolean;
 } 
