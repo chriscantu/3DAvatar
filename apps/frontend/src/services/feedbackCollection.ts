@@ -1,5 +1,4 @@
-import type { ChatMessage } from '../types/common';
-import type { Context } from '../types/context';
+// Feedback Collection Service for Avatar System
 
 /**
  * Feedback Collection Service for Avatar System
@@ -143,23 +142,21 @@ export interface CriticalIssue {
   suggestedActions: string[];
 }
 
-export interface ImprovementRecommendations {
-  immediate: Recommendation[];
-  shortTerm: Recommendation[];
-  longTerm: Recommendation[];
-  priorityScore: number;
-}
-
-export interface Recommendation {
-  id: string;
-  title: string;
-  description: string;
+export interface ImprovementRecommendation {
   category: FeedbackCategory;
   priority: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'low' | 'medium' | 'high';
-  impact: 'low' | 'medium' | 'high';
-  timeline: string;
-  dependencies: string[];
+  description: string;
+  actionItems: string[];
+  expectedImpact: string;
+  implementationEffort: 'low' | 'medium' | 'high';
+  metrics: string[];
+}
+
+export interface ImprovementRecommendations {
+  areas: ImprovementRecommendation[];
+  overallScore: number;
+  priorityActions: string[];
+  longTermGoals: string[];
 }
 
 export interface PerformanceMetrics {
@@ -280,6 +277,53 @@ export class FeedbackCollector {
   }
 
   /**
+   * Track technical performance metrics
+   */
+  trackTechnicalMetrics(userId: string, metrics: Partial<TechnicalMetrics>): void {
+    const sessionId = this.getCurrentSessionId(userId);
+    const interactionMetrics = this.getOrCreateInteractionMetrics(sessionId, userId);
+    
+    // Update technical metrics
+    interactionMetrics.technicalMetrics = {
+      ...interactionMetrics.technicalMetrics,
+      averageResponseTime: metrics.averageResponseTime || interactionMetrics.technicalMetrics.averageResponseTime,
+      processingTime: metrics.processingTime || interactionMetrics.technicalMetrics.processingTime,
+      memoryUsage: metrics.memoryUsage || interactionMetrics.technicalMetrics.memoryUsage,
+      errorCount: metrics.errorCount || interactionMetrics.technicalMetrics.errorCount,
+      cacheHitRate: metrics.cacheHitRate || interactionMetrics.technicalMetrics.cacheHitRate,
+      networkLatency: metrics.networkLatency || interactionMetrics.technicalMetrics.networkLatency
+    };
+    
+    this.interactionMetrics.set(sessionId, interactionMetrics);
+    this.invalidateAnalyticsCache();
+  }
+
+  /**
+   * Track behavioral metrics
+   */
+  trackBehavioralMetrics(userId: string, metrics: Partial<BehavioralMetrics>): void {
+    const sessionId = this.getCurrentSessionId(userId);
+    const interactionMetrics = this.getOrCreateInteractionMetrics(sessionId, userId);
+    
+    // Update behavioral metrics
+    interactionMetrics.behavioralMetrics = {
+      ...interactionMetrics.behavioralMetrics,
+      messageLength: metrics.messageLength || interactionMetrics.behavioralMetrics.messageLength,
+      questionCount: (interactionMetrics.behavioralMetrics.questionCount || 0) + (metrics.questionCount || 0),
+      emotionalExpressions: (interactionMetrics.behavioralMetrics.emotionalExpressions || 0) + (metrics.emotionalExpressions || 0),
+      topicChanges: (interactionMetrics.behavioralMetrics.topicChanges || 0) + (metrics.topicChanges || 0),
+      interruptions: (interactionMetrics.behavioralMetrics.interruptions || 0) + (metrics.interruptions || 0),
+      clarificationRequests: (interactionMetrics.behavioralMetrics.clarificationRequests || 0) + (metrics.clarificationRequests || 0)
+    };
+    
+    // Update engagement score based on new metrics
+    interactionMetrics.engagementScore = this.calculateEngagementScore(interactionMetrics.behavioralMetrics);
+    
+    this.interactionMetrics.set(sessionId, interactionMetrics);
+    this.invalidateAnalyticsCache();
+  }
+
+  /**
    * Get comprehensive feedback analytics
    */
   getAnalytics(forceRefresh: boolean = false): FeedbackAnalytics {
@@ -324,16 +368,33 @@ export class FeedbackCollector {
   /**
    * Get improvement recommendations
    */
-  getRecommendations(): ImprovementRecommendations {
+  getImprovementRecommendations(): ImprovementRecommendation[] {
     const analytics = this.getAnalytics();
-    return analytics.recommendations;
+    return analytics.recommendations.areas.map(area => ({
+      category: area.category,
+      priority: area.priority,
+      description: area.description,
+      actionItems: area.actionItems,
+      expectedImpact: area.expectedImpact,
+      implementationEffort: area.implementationEffort,
+      metrics: area.metrics
+    }));
   }
 
   /**
-   * Export feedback data
+   * Export feedback data with optional anonymization
    */
-  exportFeedback(format: 'json' | 'csv' = 'json'): string {
-    const feedback = Array.from(this.feedbackStore.values());
+  exportFeedbackData(format: 'json' | 'csv' = 'json', anonymize: boolean = false): string {
+    let feedback = Array.from(this.feedbackStore.values());
+    
+    if (anonymize) {
+      feedback = feedback.map(f => ({
+        ...f,
+        userId: this.anonymizeUserId(f.userId),
+        sessionId: this.anonymizeSessionId(f.sessionId),
+        content: this.anonymizeContent(f.content)
+      }));
+    }
     
     if (format === 'csv') {
       return this.convertToCSV(feedback);
@@ -380,6 +441,21 @@ export class FeedbackCollector {
       retentionRate: this.calculateRetentionRate(allMetrics),
       cacheHitRate: this.isAnalyticsCacheValid() ? 1 : 0
     };
+  }
+
+  /**
+   * Set privacy settings
+   */
+  setPrivacySettings(settings: Partial<FeedbackConfig>): void {
+    this.config = {
+      ...this.config,
+      ...settings
+    };
+    
+    // If privacy mode changed to minimal, clean up sensitive data
+    if (settings.privacyMode === 'minimal') {
+      this.cleanupSensitiveData();
+    }
   }
 
   private createDefaultConfig(config?: Partial<FeedbackConfig>): FeedbackConfig {
@@ -632,12 +708,12 @@ export class FeedbackCollector {
     const weaknesses = this.identifyWeaknesses(feedback);
     const criticalIssues = this.identifyCriticalIssues(feedback);
 
-    return {
-      immediate: this.generateImmediateRecommendations(criticalIssues),
-      shortTerm: this.generateShortTermRecommendations(weaknesses),
-      longTerm: this.generateLongTermRecommendations(feedback),
-      priorityScore: this.calculatePriorityScore(criticalIssues, weaknesses)
-    };
+          return {
+        areas: this.generateImmediateRecommendations(criticalIssues),
+        overallScore: this.calculatePriorityScore(criticalIssues, weaknesses),
+        priorityActions: this.generatePriorityActions(criticalIssues, weaknesses),
+        longTermGoals: this.generateLongTermGoals()
+      };
   }
 
   private generatePerformanceMetrics(feedback: UserFeedback[], metrics: InteractionMetrics[]): PerformanceMetrics {
@@ -837,48 +913,61 @@ export class FeedbackCollector {
     return issues;
   }
 
-  private generateImmediateRecommendations(criticalIssues: CriticalIssue[]): Recommendation[] {
-    return criticalIssues.map((issue, index) => ({
-      id: `immediate_${index}`,
-      title: `Address ${issue.issue}`,
-      description: issue.suggestedActions.join(', '),
-      category: 'technical_performance',
+  private generateImmediateRecommendations(criticalIssues: CriticalIssue[]): ImprovementRecommendation[] {
+    return criticalIssues.map((issue) => ({
+      category: 'technical_performance', // Default to technical for immediate fixes
       priority: 'critical',
-      effort: 'high',
-      impact: 'high',
-      timeline: '1-2 days',
-      dependencies: []
+      description: issue.suggestedActions.join(', '),
+      actionItems: issue.suggestedActions,
+      expectedImpact: issue.impact,
+      implementationEffort: 'high',
+      metrics: [] // No specific metrics for immediate fixes
     }));
   }
 
-  private generateShortTermRecommendations(weaknesses: string[]): Recommendation[] {
-    return weaknesses.map((weakness, index) => ({
-      id: `short_term_${index}`,
-      title: `Improve ${weakness}`,
-      description: `Focus on addressing ${weakness} based on user feedback`,
+  private generateShortTermRecommendations(weaknesses: string[]): ImprovementRecommendation[] {
+    return weaknesses.map((weakness) => ({
       category: 'response_quality',
       priority: 'high',
-      effort: 'medium',
-      impact: 'medium',
-      timeline: '1-2 weeks',
-      dependencies: []
+      description: `Focus on addressing ${weakness} based on user feedback`,
+      actionItems: [],
+      expectedImpact: 'Medium-term improvement in response quality',
+      implementationEffort: 'medium',
+      metrics: []
     }));
   }
 
-  private generateLongTermRecommendations(feedback: UserFeedback[]): Recommendation[] {
+  private generateLongTermRecommendations(): ImprovementRecommendation[] {
     return [
       {
-        id: 'long_term_1',
-        title: 'Implement advanced personalization',
-        description: 'Develop more sophisticated user modeling and personalization',
         category: 'user_experience',
         priority: 'medium',
-        effort: 'high',
-        impact: 'high',
-        timeline: '2-3 months',
-        dependencies: ['user_data_collection', 'ml_infrastructure']
+        description: 'Develop more sophisticated user modeling and personalization',
+        actionItems: [],
+        expectedImpact: 'Long-term enhancement of user satisfaction and engagement',
+        implementationEffort: 'high',
+        metrics: []
       }
     ];
+  }
+
+  private generatePriorityActions(criticalIssues: CriticalIssue[], weaknesses: string[]): string[] {
+    const actions: string[] = [];
+    criticalIssues.forEach(issue => {
+      actions.push(`Address ${issue.issue} (Priority: ${issue.severity})`);
+    });
+    weaknesses.forEach(weakness => {
+      actions.push(`Improve ${weakness} (Priority: high)`);
+    });
+    return actions;
+  }
+
+  private generateLongTermGoals(): string[] {
+    const goals: string[] = [];
+    goals.push('Achieve industry-leading technical performance.');
+    goals.push('Develop a robust and scalable user modeling system.');
+    goals.push('Implement advanced personalization algorithms.');
+    return goals;
   }
 
   private calculatePriorityScore(criticalIssues: CriticalIssue[], weaknesses: string[]): number {
@@ -917,6 +1006,101 @@ export class FeedbackCollector {
     ]);
     
     return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  }
+
+  private getCurrentSessionId(userId: string): string {
+    // Try to find existing session for user, or create new one
+    for (const [sessionId, metrics] of this.interactionMetrics.entries()) {
+      if (metrics.userId === userId) {
+        return sessionId;
+      }
+    }
+    // Create new session ID if none found
+    return this.generateSessionId(userId);
+  }
+
+  private generateSessionId(userId: string): string {
+    return `session_${userId}_${Date.now()}`;
+  }
+
+  private getOrCreateInteractionMetrics(sessionId: string, userId: string): InteractionMetrics {
+    let metrics = this.interactionMetrics.get(sessionId);
+    
+    if (!metrics) {
+      metrics = {
+        sessionId,
+        userId,
+        timestamp: new Date(),
+        messageCount: 0,
+        duration: 0,
+        userInitiated: true,
+        completionRate: 0,
+        engagementScore: 0.5,
+        satisfactionScore: 0.5,
+        technicalMetrics: {
+          averageResponseTime: 0,
+          processingTime: 0,
+          memoryUsage: 0,
+          errorCount: 0,
+          cacheHitRate: 0,
+          networkLatency: 0
+        },
+        behavioralMetrics: {
+          messageLength: 0,
+          questionCount: 0,
+          emotionalExpressions: 0,
+          topicChanges: 0,
+          interruptions: 0,
+          clarificationRequests: 0
+        }
+      };
+      this.interactionMetrics.set(sessionId, metrics);
+    }
+    
+    return metrics;
+  }
+
+  private updateAverageResponseTime(currentAverage: number, newResponseTime: number, messageCount: number): number {
+    if (messageCount === 0) return newResponseTime;
+    return ((currentAverage * messageCount) + newResponseTime) / (messageCount + 1);
+  }
+
+  private anonymizeUserId(userId: string): string {
+    // Simple anonymization - could be more sophisticated
+    const hash = this.simpleHash(userId);
+    return `user_${hash}`;
+  }
+
+  private anonymizeSessionId(sessionId: string): string {
+    const hash = this.simpleHash(sessionId);
+    return `session_${hash}`;
+  }
+
+  private anonymizeContent(content: string): string {
+    // Remove personally identifiable information
+    return content
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+      .replace(/\b\d{3}-?\d{3}-?\d{4}\b/g, '[PHONE]')
+      .replace(/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/g, '[CARD]');
+  }
+
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  private cleanupSensitiveData(): void {
+    // Remove sensitive data when privacy mode is minimal
+    for (const feedback of this.feedbackStore.values()) {
+      feedback.content = this.anonymizeContent(feedback.content);
+      feedback.userId = this.anonymizeUserId(feedback.userId);
+      feedback.sessionId = this.anonymizeSessionId(feedback.sessionId);
+    }
   }
 }
 
