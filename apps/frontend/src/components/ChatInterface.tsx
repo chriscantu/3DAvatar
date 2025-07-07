@@ -86,11 +86,106 @@ const TypingIndicator = React.memo<{ isVisible: boolean }>(({ isVisible }) => {
 
 TypingIndicator.displayName = 'TypingIndicator';
 
-// Custom hook for chat state management
+// Local storage keys
+const CHAT_HISTORY_KEY = '3davatar_chat_history';
+
+// Chat storage utilities
+const chatStorage = {
+  // Save messages to localStorage
+  saveMessages: (messages: Message[]) => {
+    try {
+      const serialized = JSON.stringify(messages);
+      localStorage.setItem(CHAT_HISTORY_KEY, serialized);
+    } catch (error) {
+      console.error('Failed to save chat history:', error);
+    }
+  },
+
+  // Load messages from localStorage
+  loadMessages: (): Message[] => {
+    try {
+      const serialized = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (serialized) {
+        return JSON.parse(serialized);
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+    }
+    return [];
+  },
+
+  // Clear all chat history
+  clearHistory: () => {
+    try {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+    } catch (error) {
+      console.error('Failed to clear chat history:', error);
+    }
+  },
+
+  // Export chat history as JSON
+  exportHistory: (messages: Message[]) => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalMessages: messages.length,
+      messages: messages.map(msg => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp).toISOString(),
+      })),
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json',
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `3davatar_chat_history_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
+
+  // Get chat statistics
+  getStats: (messages: Message[]) => {
+    const userMessages = messages.filter(m => m.sender === 'user');
+    const assistantMessages = messages.filter(m => m.sender === 'assistant');
+    const totalChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+    
+    return {
+      totalMessages: messages.length,
+      userMessages: userMessages.length,
+      assistantMessages: assistantMessages.length,
+      totalCharacters: totalChars,
+      firstMessage: messages.length > 0 ? new Date(messages[0].timestamp) : null,
+      lastMessage: messages.length > 0 ? new Date(messages[messages.length - 1].timestamp) : null,
+    };
+  },
+};
+
+// Custom hook for chat state management with persistence
 const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load chat history on component mount
+  useEffect(() => {
+    const loadedMessages = chatStorage.loadMessages();
+    if (loadedMessages.length > 0) {
+      setMessages(loadedMessages);
+      console.log(`Loaded ${loadedMessages.length} messages from chat history`);
+    }
+  }, []);
+
+  // Save messages to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      chatStorage.saveMessages(messages);
+    }
+  }, [messages]);
   
   const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
     const newMessage: Message = {
@@ -98,13 +193,40 @@ const useChat = () => {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: Date.now(),
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => {
+      const updated = [...prev, newMessage];
+      return updated;
+    });
     return newMessage.id;
   }, []);
+
+  const clearHistory = useCallback(() => {
+    setMessages([]);
+    chatStorage.clearHistory();
+    console.log('Chat history cleared');
+  }, []);
+
+  const exportHistory = useCallback(() => {
+    chatStorage.exportHistory(messages);
+    console.log('Chat history exported');
+  }, [messages]);
+
+  const getStats = useCallback(() => {
+    return chatStorage.getStats(messages);
+  }, [messages]);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+
+  const searchMessages = useCallback((query: string) => {
+    if (!query.trim()) return messages;
+    
+    const lowercaseQuery = query.toLowerCase();
+    return messages.filter(message => 
+      message.content.toLowerCase().includes(lowercaseQuery)
+    );
+  }, [messages]);
 
   return {
     messages,
@@ -114,6 +236,10 @@ const useChat = () => {
     setError,
     addMessage,
     clearError,
+    clearHistory,
+    exportHistory,
+    getStats,
+    searchMessages,
   };
 };
 
@@ -136,6 +262,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setError,
     addMessage,
     clearError,
+    clearHistory,
+    exportHistory,
   } = useChat();
 
   const {
@@ -334,15 +462,50 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className="chat-interface" role="main" aria-label="Chat interface">
       <div className="chat-header">
-        <h3 id="chat-title">Chat with AI Avatar</h3>
-        <div className="connection-status" aria-live="polite">
-          <span 
-            className={`status-indicator ${isLoading ? 'loading' : 'connected'}`}
-            aria-hidden="true"
-          />
-          <span className="status-text">
-            {isLoading ? 'Sending...' : 'Connected'}
-          </span>
+        <div className="header-left">
+          <h3 id="chat-title">Chat with AI Avatar</h3>
+          <div className="chat-stats" title={`${messages.length} messages total`}>
+            {messages.length > 0 && (
+              <span className="message-count">{messages.length} messages</span>
+            )}
+          </div>
+        </div>
+        <div className="header-right">
+          <div className="chat-actions">
+            {messages.length > 0 && (
+              <>
+                <button
+                  onClick={exportHistory}
+                  className="action-button export-button"
+                  title="Export chat history"
+                  aria-label="Export chat history as JSON file"
+                >
+                  📤
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear all chat history? This cannot be undone.')) {
+                      clearHistory();
+                    }
+                  }}
+                  className="action-button clear-button"
+                  title="Clear chat history"
+                  aria-label="Clear all chat history"
+                >
+                  🗑️
+                </button>
+              </>
+            )}
+          </div>
+          <div className="connection-status" aria-live="polite">
+            <span 
+              className={`status-indicator ${isLoading ? 'loading' : 'connected'}`}
+              aria-hidden="true"
+            />
+            <span className="status-text">
+              {isLoading ? 'Sending...' : 'Connected'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -362,6 +525,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {messages.length === 0 && (
             <div className="welcome-message" role="status">
               👋 Welcome! Start a conversation with your AI avatar. You can type or use voice input.
+            </div>
+          )}
+          {messages.length > 0 && (
+            <div className="history-indicator" role="status">
+              💾 Chat history loaded - your conversations are automatically saved locally
             </div>
           )}
           {messages.map((message) => (
