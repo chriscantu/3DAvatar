@@ -258,20 +258,36 @@ export class AvatarMemorySystem implements MemorySystem {
   private calculateRelevanceScore(query: string, shortTerm: ChatMessage[], longTerm: SignificantInteraction[]): number {
     // Calculate overall relevance score (0-1 scale)
     let score = 0.0;
+    const queryLower = query.toLowerCase();
+    const queryWords = queryLower.split(' ').filter(word => word.length > 0);
     
     // Short-term relevance
-    const recentRelevant = shortTerm.filter(msg => 
-      msg.content.toLowerCase().includes(query.toLowerCase())
-    ).length;
+    const recentRelevant = shortTerm.filter(msg => {
+      const contentLower = msg.content.toLowerCase();
+      return queryWords.some(word => contentLower.includes(word));
+    }).length;
     
-    score += (recentRelevant / Math.max(shortTerm.length, 1)) * 0.4;
+    if (shortTerm.length > 0) {
+      score += (recentRelevant / shortTerm.length) * 0.4;
+    }
     
     // Long-term relevance
-    const longTermRelevant = longTerm.filter(interaction =>
-      interaction.topics.some(topic => topic.includes(query.toLowerCase()))
-    ).length;
+    const longTermRelevant = longTerm.filter(interaction => {
+      const summaryLower = interaction.summary.toLowerCase();
+      return queryWords.some(word => 
+        summaryLower.includes(word) || 
+        interaction.topics.some(topic => topic.toLowerCase().includes(word))
+      );
+    }).length;
     
-    score += (longTermRelevant / Math.max(longTerm.length, 1)) * 0.6;
+    if (longTerm.length > 0) {
+      score += (longTermRelevant / longTerm.length) * 0.6;
+    }
+    
+    // Ensure minimum score if any data exists
+    if (shortTerm.length > 0 || longTerm.length > 0) {
+      score = Math.max(score, 0.1);
+    }
     
     return Math.min(score, 1.0);
   }
@@ -397,8 +413,8 @@ class LongTermMemoryManager implements LongTermMemory {
     );
 
     if (existing) {
-      // Update existing preference
-      existing.confidence = Math.min((existing.confidence + preference.confidence) / 2, 1.0);
+      // Update existing preference - use the higher confidence value
+      existing.confidence = Math.max(existing.confidence, preference.confidence);
       existing.evidence.push(...preference.evidence);
       existing.lastUpdated = preference.lastUpdated;
     } else {
@@ -436,7 +452,7 @@ class LongTermMemoryManager implements LongTermMemory {
     return {
       interactionCount: this.significantInteractions.length,
       preferenceCount: this.learnedPreferences.length,
-      relationshipLevel: this.relationshipProgress.trustLevel,
+      relationshipLevel: (this.relationshipProgress.trustLevel + this.relationshipProgress.intimacyLevel) / 2,
       capacity: this.capacity,
       averageInteractionImpact: this.calculateAverageImpact()
     };
