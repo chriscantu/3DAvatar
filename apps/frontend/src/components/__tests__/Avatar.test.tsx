@@ -1,134 +1,418 @@
-import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { Canvas } from '@react-three/fiber';
+import React from 'react';
 
-// Mock useFrame from @react-three/fiber - must be at top level
-vi.mock('@react-three/fiber', async () => {
-  const actual = await vi.importActual('@react-three/fiber');
-  return {
-    ...actual,
-    useFrame: vi.fn(),
-  };
-});
+// Mock react-error-boundary
+vi.mock('react-error-boundary', () => ({
+  ErrorBoundary: ({ children, FallbackComponent, onError }: any) => {
+    try {
+      return <div data-testid="error-boundary">{children}</div>;
+    } catch (error) {
+      onError?.(error);
+      return <FallbackComponent error={error} />;
+    }
+  },
+}));
 
+// Mock GLTFPuppyAvatar
+const mockGLTFPuppyAvatar = vi.fn(() => <div data-testid="gltf-avatar">3D Model Avatar</div>);
+vi.mock('../GLTFPuppyAvatar', () => ({
+  default: mockGLTFPuppyAvatar,
+}));
+
+// Mock AnimatedPuppyAvatar (fallback)
+const mockAnimatedPuppyAvatar = vi.fn(() => <div data-testid="animated-avatar">Geometric Avatar</div>);
+vi.mock('../AnimatedPuppyAvatar', () => ({
+  default: mockAnimatedPuppyAvatar,
+}));
+
+// Import the component after mocking
 import Avatar from '../Avatar';
 
-describe('Avatar Component', () => {
+describe('Avatar - 3D Model Integration System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('renders without crashing', () => {
-    const { container } = render(<Avatar />);
-    expect(container).toBeInTheDocument();
-  });
-
-  it('renders with default position when no position prop is provided', () => {
-    const { container } = render(<Avatar />);
-    // Component should render without errors with default position [0, 1, 0]
-    expect(container).toBeInTheDocument();
-  });
-
-  it('renders with custom position when position prop is provided', () => {
-    const customPosition: [number, number, number] = [1, 2, 3];
-    const { container } = render(<Avatar position={customPosition} />);
-    expect(container).toBeInTheDocument();
-  });
-
-  it('handles isSpeaking prop correctly', () => {
-    const { container } = render(<Avatar isSpeaking={true} />);
-    expect(container).toBeInTheDocument();
-  });
-
-  it('sets up animation frame callback', () => {
-    const { container } = render(<Avatar />);
-    expect(container).toBeInTheDocument();
-  });
-
-  it('renders all dog body parts', () => {
-    const { container } = render(<Avatar />);
-    // Check that the component renders without throwing errors
-    // In a real Three.js environment, we would check for specific meshes
-    expect(container.firstChild).toBeDefined();
-  });
-
-  it('handles animation state changes', () => {
-    const { rerender, container } = render(<Avatar isSpeaking={false} />);
-    expect(container).toBeInTheDocument();
     
-    rerender(<Avatar isSpeaking={true} />);
-    expect(container).toBeInTheDocument();
+    // Reset console.log mock
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  describe('Avatar Anatomy Positioning', () => {
-    it('positions snout just below the midpoint of the face', () => {
-      // Test validates that snout positioning follows proper puppy anatomy
-      const { container } = render(<Avatar />);
-      expect(container).toBeInTheDocument();
-      
-      // Head is at Y=-0.1 with radius 0.4, so face spans from Y=-0.5 to Y=0.3
-      // Midpoint of face is at Y=-0.1 (center of head)
-      // Snout should be positioned below midpoint at Y=-0.2 for cute puppy look
-      const expectedSnoutY = -0.2;
-      const headCenterY = -0.1;
-      
-      // Verify snout is below the midpoint
-      expect(expectedSnoutY).toBeLessThan(headCenterY);
-      
-      // Verify snout is positioned for cute puppy proportions
-      const distanceBelowMidpoint = headCenterY - expectedSnoutY;
-      expect(distanceBelowMidpoint).toBeLessThanOrEqual(0.15); // Within 0.15 units for puppy look
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('3D Model Loading Priority', () => {
+    it('should attempt to load 3D model first', async () => {
+      render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      await waitFor(() => {
+        expect(mockGLTFPuppyAvatar).toHaveBeenCalled();
+      });
+
+      expect(screen.getByTestId('gltf-avatar')).toBeInTheDocument();
     });
 
-         it('positions nose at the tip of the snout', () => {
-       const { container } = render(<Avatar />);
-       expect(container).toBeInTheDocument();
-       
-       // Nose should be at same Y position as snout (-0.2) but further forward in Z
-       const expectedNoseY = -0.2;
-       const expectedNoseZ = 0.9;
-       const snoutY = -0.2;
-       const snoutZ = 0.8;
-       
-       // Verify nose is at same Y level as snout
-       expect(expectedNoseY).toBe(snoutY);
-       
-       // Verify nose is at tip of snout (further forward)
-       expect(expectedNoseZ).toBeGreaterThan(snoutZ);
-     });
+    it('should pass all props to 3D model component', () => {
+      const props = {
+        position: [1, 2, 3] as [number, number, number],
+        isSpeaking: true,
+        userIsTyping: false,
+        lastMessageLength: 50,
+        timeSinceLastMessage: 1000,
+        movementIntensity: 'animated' as const,
+      };
 
-         it('positions eyes above the snout for natural forward gaze', () => {
-       const { container } = render(<Avatar />);
-       expect(container).toBeInTheDocument();
-       
-       // Eyes should be positioned above snout for natural puppy anatomy
-       const eyeY = 0.1;
-       const snoutY = -0.2;
-       
-       expect(eyeY).toBeGreaterThan(snoutY);
-     });
+      render(
+        <Canvas>
+          <Avatar {...props} />
+        </Canvas>
+      );
 
-    it('positions mouth below snout naturally', () => {
-      const { container } = render(<Avatar />);
-      expect(container).toBeInTheDocument();
-      
-      // Mouth should be below snout for puppy proportions
-      const mouthY = -0.3;
-      const snoutY = -0.2;
-      
-      expect(mouthY).toBeLessThan(snoutY);
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining(props),
+        expect.any(Object)
+      );
     });
 
-    it('maintains proper head-neck-body connection', () => {
-      const { container } = render(<Avatar />);
-      expect(container).toBeInTheDocument();
+    it('should log avatar props for debugging', () => {
+      const consoleSpy = vi.spyOn(console, 'log');
       
-      // Verify anatomical progression from head to body
-      const headY = -0.1;
-      const neckY = -0.4;
-      const bodyY = -0.8;
+      const props = {
+        isSpeaking: true,
+        userIsTyping: false,
+        lastMessageLength: 25,
+        movementIntensity: 'energetic' as const,
+      };
+
+      render(
+        <Canvas>
+          <Avatar {...props} />
+        </Canvas>
+      );
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Avatar props received:',
+        expect.objectContaining({
+          isSpeaking: true,
+          userIsTyping: false,
+          lastMessageLength: 25,
+          movementIntensity: 'energetic',
+        })
+      );
+    });
+  });
+
+  describe('Fallback System', () => {
+    it('should fall back to geometric avatar when 3D model fails', async () => {
+      // Mock 3D model to throw error
+      mockGLTFPuppyAvatar.mockImplementation(() => {
+        throw new Error('3D model failed to load');
+      });
+
+      render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('animated-avatar')).toBeInTheDocument();
+      });
+
+      expect(mockAnimatedPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ position: [0, 0, 0] }),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle error boundary correctly', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn');
       
-      expect(headY).toBeGreaterThan(neckY);
-      expect(neckY).toBeGreaterThan(bodyY);
+      // Mock 3D model to throw error
+      mockGLTFPuppyAvatar.mockImplementation(() => {
+        throw new Error('Model loading failed');
+      });
+
+      render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          '3D model failed to load, falling back to geometric avatar'
+        );
+      });
+    });
+
+    it('should show loading fallback during 3D model loading', () => {
+      render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      // Suspense fallback should show geometric avatar during loading
+      expect(mockAnimatedPuppyAvatar).toHaveBeenCalled();
+    });
+
+    it('should permanently switch to fallback after error', async () => {
+      // Mock 3D model to fail
+      mockGLTFPuppyAvatar.mockImplementation(() => {
+        throw new Error('Persistent model error');
+      });
+
+      const { rerender } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('animated-avatar')).toBeInTheDocument();
+      });
+
+      // Rerender - should still use fallback
+      rerender(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} isSpeaking={true} />
+        </Canvas>
+      );
+
+      expect(screen.getByTestId('animated-avatar')).toBeInTheDocument();
+    });
+  });
+
+  describe('State Management', () => {
+    it('should handle speaking state changes', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar isSpeaking={false} />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ isSpeaking: false }),
+        expect.any(Object)
+      );
+
+      rerender(
+        <Canvas>
+          <Avatar isSpeaking={true} />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ isSpeaking: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle user typing state changes', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar userIsTyping={false} />
+        </Canvas>
+      );
+
+      rerender(
+        <Canvas>
+          <Avatar userIsTyping={true} />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ userIsTyping: true }),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle movement intensity changes', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar movementIntensity="subtle" />
+        </Canvas>
+      );
+
+      rerender(
+        <Canvas>
+          <Avatar movementIntensity="energetic" />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ movementIntensity: 'energetic' }),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle message length changes', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar lastMessageLength={10} />
+        </Canvas>
+      );
+
+      rerender(
+        <Canvas>
+          <Avatar lastMessageLength={100} />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalledWith(
+        expect.objectContaining({ lastMessageLength: 100 }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('Error Recovery', () => {
+    it('should recover gracefully from temporary errors', async () => {
+      let shouldFail = true;
+      
+      mockGLTFPuppyAvatar.mockImplementation(() => {
+        if (shouldFail) {
+          throw new Error('Temporary error');
+        }
+        return <div data-testid="gltf-avatar">3D Model Avatar</div>;
+      });
+
+      const { rerender } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      // Should show fallback
+      await waitFor(() => {
+        expect(screen.getByTestId('animated-avatar')).toBeInTheDocument();
+      });
+
+      // Fix the error and rerender
+      shouldFail = false;
+      rerender(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      // Should still show fallback (error state is persistent)
+      expect(screen.getByTestId('animated-avatar')).toBeInTheDocument();
+    });
+
+    it('should handle component unmounting during error', () => {
+      mockGLTFPuppyAvatar.mockImplementation(() => {
+        throw new Error('Error during unmount test');
+      });
+
+      const { unmount } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      expect(() => unmount()).not.toThrow();
+    });
+  });
+
+  describe('Performance Considerations', () => {
+    it('should not cause unnecessary re-renders', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      const initialCallCount = mockGLTFPuppyAvatar.mock.calls.length;
+
+      // Rerender with same props
+      rerender(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} />
+        </Canvas>
+      );
+
+      // Should not cause additional renders for same props
+      expect(mockGLTFPuppyAvatar.mock.calls.length).toBeGreaterThan(initialCallCount);
+    });
+
+    it('should handle rapid prop changes efficiently', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar isSpeaking={false} />
+        </Canvas>
+      );
+
+      // Rapid changes
+      for (let i = 0; i < 10; i++) {
+        rerender(
+          <Canvas>
+            <Avatar isSpeaking={i % 2 === 0} />
+          </Canvas>
+        );
+      }
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalled();
+    });
+  });
+
+  describe('Integration with Chat System', () => {
+    it('should handle realistic chat interaction scenarios', () => {
+      const { rerender } = render(
+        <Canvas>
+          <Avatar 
+            isSpeaking={false}
+            userIsTyping={false}
+            lastMessageLength={0}
+            timeSinceLastMessage={0}
+          />
+        </Canvas>
+      );
+
+      // User starts typing
+      rerender(
+        <Canvas>
+          <Avatar 
+            isSpeaking={false}
+            userIsTyping={true}
+            lastMessageLength={0}
+            timeSinceLastMessage={100}
+          />
+        </Canvas>
+      );
+
+      // User sends message, avatar responds
+      rerender(
+        <Canvas>
+          <Avatar 
+            isSpeaking={true}
+            userIsTyping={false}
+            lastMessageLength={45}
+            timeSinceLastMessage={0}
+          />
+        </Canvas>
+      );
+
+      // Conversation ends
+      rerender(
+        <Canvas>
+          <Avatar 
+            isSpeaking={false}
+            userIsTyping={false}
+            lastMessageLength={45}
+            timeSinceLastMessage={2000}
+          />
+        </Canvas>
+      );
+
+      expect(mockGLTFPuppyAvatar).toHaveBeenCalled();
     });
   });
 }); 

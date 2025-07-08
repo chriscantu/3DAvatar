@@ -1,7 +1,7 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import ModelBasedAvatar from './ModelBasedAvatar';
+import Avatar from './Avatar';
 
 interface ThreeDRoomProps {
   isAvatarSpeaking?: boolean;
@@ -166,10 +166,14 @@ const Room = ({
     <directionalLight position={[5, 10, 7.5]} intensity={1.0} castShadow />
     <pointLight position={[0, 4, 0]} intensity={0.7} color="#E6E6FA" />
     
-    {/* Avatar - positioned on the floor with proper ground contact */}
-    <ModelBasedAvatar 
+    {/* Animated Puppy Avatar - positioned on the floor with proper ground contact */}
+    <Avatar 
       position={[0, 0.17, 0]} 
       isSpeaking={isAvatarSpeaking}
+      userIsTyping={userIsTyping}
+      lastMessageLength={lastMessageLength}
+      timeSinceLastMessage={timeSinceLastMessage}
+      movementIntensity="animated"
     />
   </>
 );
