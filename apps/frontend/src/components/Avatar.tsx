@@ -35,7 +35,7 @@ const Avatar: React.FC<AvatarProps> = ({
   position = [0, 1, 0], 
   isSpeaking = false,
   userIsTyping = false,
-  movementIntensity = 'moderate',
+  movementIntensity = 'animated', // Changed from 'moderate' to 'animated' for more expressive movement
   lastMessageLength = 0,
   timeSinceLastMessage = 0
 }) => {
@@ -48,6 +48,8 @@ const Avatar: React.FC<AvatarProps> = ({
   const rightEarRef = useRef<THREE.Mesh>(null);
   const leftPawRef = useRef<THREE.Mesh>(null);
   const rightPawRef = useRef<THREE.Mesh>(null);
+  const leftPupilRef = useRef<THREE.Mesh>(null);
+  const rightPupilRef = useRef<THREE.Mesh>(null);
 
   // Animation controller
   const [animationController] = useState(() => new AvatarAnimationController());
@@ -91,14 +93,14 @@ const Avatar: React.FC<AvatarProps> = ({
   // Memoize geometries to prevent recreation
   const geometries = useMemo(() => {
     return {
-      // Head and body parts
-      head: new THREE.SphereGeometry(0.4, GEOMETRY_CONFIG.SPHERE_SEGMENTS, GEOMETRY_CONFIG.SPHERE_SEGMENTS),
-      snout: new THREE.SphereGeometry(0.25, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      nose: new THREE.SphereGeometry(0.08, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      eye: new THREE.SphereGeometry(0.08, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      pupil: new THREE.SphereGeometry(0.04, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      ear: new THREE.SphereGeometry(0.12, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      mouth: new THREE.SphereGeometry(0.1, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
+      // Head and body parts - improved proportions
+      head: new THREE.SphereGeometry(0.35, GEOMETRY_CONFIG.SPHERE_SEGMENTS, GEOMETRY_CONFIG.SPHERE_SEGMENTS), // Slightly smaller head
+      snout: new THREE.CapsuleGeometry(0.12, 0.3, 4, 8), // More realistic snout shape
+      nose: new THREE.SphereGeometry(0.06, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
+      eye: new THREE.SphereGeometry(0.06, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS), // Slightly smaller eyes
+      pupil: new THREE.SphereGeometry(0.03, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
+      ear: new THREE.ConeGeometry(0.08, 0.25, 8), // More dog-like triangular ears
+      mouth: new THREE.SphereGeometry(0.08, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
       
       // Body
       body: new THREE.BoxGeometry(0.6, 0.4, 1.2),
@@ -138,6 +140,16 @@ const Avatar: React.FC<AvatarProps> = ({
 
   // Update animation controller with current state
   useEffect(() => {
+    // Add debug logging to track state changes
+    console.log('Avatar state update:', {
+      isSpeaking,
+      userIsTyping,
+      movementIntensity,
+      lastMessageLength,
+      timeSinceLastMessage,
+      timestamp: new Date().toLocaleTimeString()
+    });
+    
     animationController.updateState({
       isSpeaking,
       userIsTyping,
@@ -145,6 +157,10 @@ const Avatar: React.FC<AvatarProps> = ({
       lastMessageLength,
       timeSinceLastMessage
     });
+    
+    // Log the determined state
+    const currentState = animationController.getCurrentState();
+    console.log('Avatar controller state:', currentState.state, currentState);
   }, [animationController, isSpeaking, userIsTyping, movementIntensity, lastMessageLength, timeSinceLastMessage]);
 
   // Cleanup animation controller on unmount
@@ -163,34 +179,72 @@ const Avatar: React.FC<AvatarProps> = ({
     
     // Get current movement pattern
     const pattern = animationController.getCurrentMovementPattern();
+    const currentState = animationController.getCurrentState();
+    
+    // Add subtle idle behaviors when not in active states
+    const isIdle = currentState.state === 'idle';
+    const occasionalLookAround = isIdle ? Math.sin(time * 0.1) * 0.3 : 0; // Very slow head turns
+    const microMovements = Math.sin(time * 2.3) * 0.005; // Tiny random movements
+    
+    // Log state changes for debugging (reduced frequency)
+    if (time % 3 < 0.1) { // Log every 3 seconds
+      console.log('Avatar frame update:', {
+        avatarState: currentState.state,
+        pattern: pattern.pawGesture,
+        bodyBounce: pattern.bodyBounce.height,
+        tailWag: pattern.tailWag.intensity,
+        time: time.toFixed(1)
+      });
+    }
     
     // Apply head animations
     if (headRef.current) {
-      // Breathing animation
-      const breathingOffset = Math.sin(time * pattern.headBob.frequency) * pattern.headBob.amplitude * pattern.breathingIntensity;
-      headRef.current.position.y = breathingOffset;
+      // Remove the awkward up-and-down breathing animation
+      // Keep head at stable Y position
+      headRef.current.position.y = 0;
       
-      // Head rotation and tilt
-      headRef.current.rotation.x = pattern.headRotation.x + Math.sin(time * 0.5) * 0.02;
-      headRef.current.rotation.y = pattern.headRotation.y;
-      headRef.current.rotation.z = pattern.headTilt + Math.sin(time * 0.3) * 0.01;
+      // Smoother head rotation and tilt with easing and idle behaviors
+      const targetRotationX = pattern.headRotation.x + Math.sin(time * 0.3) * 0.01 + microMovements;
+      const targetRotationY = pattern.headRotation.y + Math.sin(time * 0.4) * 0.005 + occasionalLookAround;
+      const targetRotationZ = pattern.headTilt + Math.sin(time * 0.25) * 0.008 + microMovements * 0.5;
+      
+      // Use lerp for smoother transitions
+      headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, targetRotationX, 0.05);
+      headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, targetRotationY, 0.05);
+      headRef.current.rotation.z = THREE.MathUtils.lerp(headRef.current.rotation.z, targetRotationZ, 0.05);
     }
     
-    // Apply ear animations
+    // Apply ear animations with improved natural movement
     if (leftEarRef.current) {
-      const twitchOffset = Math.sin(time * pattern.earTwitch.frequency) * pattern.earTwitch.intensity;
-      leftEarRef.current.rotation.z = pattern.earRotation.left + twitchOffset;
+      const baseTwitchOffset = Math.sin(time * pattern.earTwitch.frequency) * pattern.earTwitch.intensity;
+      const naturalEarSway = Math.sin(time * 0.6) * 0.02; // Gentle natural movement
+      const targetRotation = pattern.earRotation.left + baseTwitchOffset + naturalEarSway;
+      
+      // Smooth ear movement with lerp
+      leftEarRef.current.rotation.z = THREE.MathUtils.lerp(
+        leftEarRef.current.rotation.z, 
+        -0.3 + targetRotation, // Base angle + movement
+        0.08
+      );
     }
     if (rightEarRef.current) {
-      const twitchOffset = Math.sin(time * pattern.earTwitch.frequency + Math.PI) * pattern.earTwitch.intensity;
-      rightEarRef.current.rotation.z = -pattern.earRotation.right + twitchOffset;
+      const baseTwitchOffset = Math.sin(time * pattern.earTwitch.frequency + Math.PI) * pattern.earTwitch.intensity;
+      const naturalEarSway = Math.sin(time * 0.8) * 0.02; // Slightly different frequency for asymmetry
+      const targetRotation = pattern.earRotation.right + baseTwitchOffset + naturalEarSway;
+      
+      // Smooth ear movement with lerp
+      rightEarRef.current.rotation.z = THREE.MathUtils.lerp(
+        rightEarRef.current.rotation.z, 
+        0.3 + targetRotation, // Base angle + movement
+        0.08
+      );
     }
     
-    // Apply mouth animation when speaking
+    // Apply mouth animation when speaking - reduced frequency
     if (mouthRef.current) {
       if (isSpeaking) {
-        const mouthScale = 0.5 + Math.sin(time * 10) * 0.3;
-        mouthRef.current.scale.setY(Math.max(0.2, mouthScale));
+        const mouthScale = 0.5 + Math.sin(time * 6) * 0.2;
+        mouthRef.current.scale.setY(Math.max(0.3, mouthScale));
       } else {
         // Gradually return to normal size
         const currentScale = mouthRef.current.scale.y;
@@ -207,50 +261,119 @@ const Avatar: React.FC<AvatarProps> = ({
       tailRef.current.rotation.z = pattern.tailPosition + wagOffset;
     }
     
-    // Apply body posture
+    // Apply body posture and bouncing
     if (groupRef.current) {
       // Body lean
       groupRef.current.rotation.x = pattern.bodyLean.forward * 0.1;
       groupRef.current.rotation.y = pattern.bodyRotation;
       groupRef.current.rotation.z = pattern.bodyLean.side * 0.05;
+      
+      // Dog-like bouncing using pattern data
+      if (pattern.bodyBounce.height > 0) {
+        // Create natural excited dog bouncing - like bouncing on hind legs
+        const bounceTime = time * pattern.bodyBounce.frequency;
+        
+        // Primary bounce (up and down)
+        const primaryBounce = Math.sin(bounceTime) * pattern.bodyBounce.height;
+        
+        // Secondary bounce (slight forward/back rock)
+        const rockMotion = Math.sin(bounceTime * 0.5) * (pattern.bodyBounce.height * 0.1);
+        
+        // Slight side-to-side wiggle (very subtle)
+        const wiggle = Math.sin(bounceTime * 1.3) * (pattern.bodyBounce.height * 0.05);
+        
+        // Apply natural dog bounce - only upward bounces (excited dogs don't go below ground)
+        groupRef.current.position.y = position[1] + Math.max(0, primaryBounce);
+        groupRef.current.position.z = position[2] + rockMotion;
+        groupRef.current.position.x = position[0] + wiggle;
+        
+        // Add slight rotation for more natural movement
+        groupRef.current.rotation.x = Math.sin(bounceTime * 0.7) * 0.02;
+      } else {
+        // Smoothly return to original position
+        const currentY = groupRef.current.position.y;
+        const currentZ = groupRef.current.position.z;
+        const currentX = groupRef.current.position.x;
+        const currentRotX = groupRef.current.rotation.x;
+        
+        groupRef.current.position.y = THREE.MathUtils.lerp(currentY, position[1], 0.1);
+        groupRef.current.position.z = THREE.MathUtils.lerp(currentZ, position[2], 0.1);
+        groupRef.current.position.x = THREE.MathUtils.lerp(currentX, position[0], 0.1);
+        groupRef.current.rotation.x = THREE.MathUtils.lerp(currentRotX, pattern.bodyLean.forward * 0.1, 0.1);
+      }
     }
     
-    // Apply paw gestures
+    // Apply paw gestures - much more natural movement
     if (leftPawRef.current) {
-      const gestureOffset = pattern.pawGesture === 'wave' ? Math.sin(time * 4) * 0.2 : 0;
+      const gestureOffset = pattern.pawGesture === 'wave' ? Math.sin(time * 1.2) * 0.08 : 0;
       leftPawRef.current.rotation.x = pattern.frontPaws.left + gestureOffset;
     }
     if (rightPawRef.current) {
-      const gestureOffset = pattern.pawGesture === 'point' ? Math.sin(time * 2) * 0.1 : 0;
+      const gestureOffset = pattern.pawGesture === 'point' ? Math.sin(time * 1.0) * 0.03 : 0;
       rightPawRef.current.rotation.x = pattern.frontPaws.right + gestureOffset;
+    }
+    
+    // Apply subtle pupil movement to follow head rotation and prevent z-fighting
+    if (leftPupilRef.current && headRef.current) {
+      // Very subtle movement that follows head rotation
+      const headRotY = headRef.current.rotation.y;
+      const headRotX = headRef.current.rotation.x;
+      
+      // Pupils move slightly in the direction of head rotation for natural eye movement
+      leftPupilRef.current.position.x = -0.12 + headRotY * 0.01;
+      leftPupilRef.current.position.y = 0.05 - headRotX * 0.01;
+    }
+    if (rightPupilRef.current && headRef.current) {
+      const headRotY = headRef.current.rotation.y;
+      const headRotX = headRef.current.rotation.x;
+      
+      rightPupilRef.current.position.x = 0.12 + headRotY * 0.01;
+      rightPupilRef.current.position.y = 0.05 - headRotX * 0.01;
     }
   });
 
   return (
     <group ref={groupRef} position={position}>
-      {/* Head - positioned at front of body */}
-      <mesh ref={headRef} position={[0, 0, 0.7]} geometry={geometries.head} material={materials.primaryFur} castShadow />
+      {/* Debug state indicator - only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <mesh position={[0, 1.5, 0]}>
+          <boxGeometry args={[0.1, 0.1, 0.1]} />
+          <meshStandardMaterial 
+            color={
+              animationController.getCurrentState().state === 'listening' ? '#00ff00' :
+              animationController.getCurrentState().state === 'speaking' ? '#ff0000' :
+              animationController.getCurrentState().state === 'excited' ? '#ffff00' :
+              animationController.getCurrentState().state === 'curious' ? '#00ffff' :
+              animationController.getCurrentState().state === 'thinking' ? '#ff00ff' :
+              '#ffffff'
+            }
+          />
+        </mesh>
+      )}
       
-      {/* Snout */}
-      <mesh position={[0, -0.1, 1.0]} geometry={geometries.snout} material={materials.secondaryFur} castShadow />
+      {/* Head - positioned at front of body with improved proportions */}
+      <mesh ref={headRef} position={[0, 0, 0.6]} geometry={geometries.head} material={materials.primaryFur} castShadow />
       
-      {/* Nose */}
-      <mesh position={[0, -0.1, 1.2]} geometry={geometries.nose} material={materials.black} castShadow />
+      {/* Snout - more realistic positioning and rotation */}
+      <mesh position={[0, -0.15, 0.85]} rotation={[Math.PI / 2, 0, 0]} geometry={geometries.snout} material={materials.secondaryFur} castShadow />
       
-      {/* Eyes */}
-      <mesh position={[-0.15, 0.1, 1.0]} geometry={geometries.eye} material={materials.white} castShadow />
-      <mesh position={[0.15, 0.1, 1.0]} geometry={geometries.eye} material={materials.white} castShadow />
+      {/* Nose - positioned at tip of snout */}
+      <mesh position={[0, -0.15, 1.0]} geometry={geometries.nose} material={materials.black} castShadow />
       
-      {/* Pupils */}
-      <mesh position={[-0.15, 0.1, 1.05]} geometry={geometries.pupil} material={materials.black} castShadow />
-      <mesh position={[0.15, 0.1, 1.05]} geometry={geometries.pupil} material={materials.black} castShadow />
+      {/* Eyes - positioned prominently on the front of the head for maximum visibility */}
+      <mesh position={[-0.12, 0.05, 0.95]} geometry={geometries.eye} material={materials.white} castShadow />
+      <mesh position={[0.12, 0.05, 0.95]} geometry={geometries.eye} material={materials.white} castShadow />
       
-      {/* Ears - properly attached to head */}
-      <mesh ref={leftEarRef} position={[-0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
-      <mesh ref={rightEarRef} position={[0.25, 0.1, 0.7]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      {/* Pupils - positioned with sufficient distance to prevent z-fighting, no shadows to reduce conflicts */}
+      <mesh ref={leftPupilRef} position={[-0.12, 0.05, 1.02]} geometry={geometries.pupil} material={materials.black} />
+      <mesh ref={rightPupilRef} position={[0.12, 0.05, 1.02]} geometry={geometries.pupil} material={materials.black} />
       
-      {/* Mouth */}
-      <mesh ref={mouthRef} position={[0, -0.2, 1.1]} geometry={geometries.mouth} material={materials.pink} castShadow />
+      {/* Ears - positioned on top of head for proper dog-like appearance */}
+      <mesh ref={leftEarRef} position={[-0.2, 0.25, 0.75]} rotation={[0, 0, -0.3]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      <mesh ref={rightEarRef} position={[0.2, 0.25, 0.75]} rotation={[0, 0, 0.3]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      
+      {/* Mouth - positioned under snout */}
+      <mesh ref={mouthRef} position={[0, -0.25, 0.95]} geometry={geometries.mouth} material={materials.pink} castShadow />
       
       {/* Body - longer dog body */}
       <mesh position={[0, -0.8, 0]} geometry={geometries.body} material={materials.primaryFur} castShadow />

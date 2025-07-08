@@ -50,6 +50,9 @@ export interface MovementPattern {
   bodyLean: { forward: number; side: number };
   bodyRotation: number;
   
+  // Body bouncing (for excited state)
+  bodyBounce: { height: number; frequency: number };
+  
   // Tail animation
   tailWag: { intensity: number; frequency: number };
   tailPosition: number;
@@ -75,96 +78,102 @@ export class AvatarAnimationController extends SimpleEventEmitter {
     idle: {
       headRotation: { x: 0, y: 0, z: 0 },
       headTilt: 0,
-      headBob: { amplitude: 0.02, frequency: 2 },
+      headBob: { amplitude: 0.04, frequency: 1.2 }, // Reduced from 0.08 for subtlety
       earRotation: { left: 0, right: 0 },
-      earTwitch: { frequency: 0.5, intensity: 0.1 },
+      earTwitch: { frequency: 0.8, intensity: 0.08 }, // Reduced intensity
       bodyLean: { forward: 0, side: 0 },
       bodyRotation: 0,
-      tailWag: { intensity: 0.3, frequency: 3 },
+      bodyBounce: { height: 0, frequency: 0 },
+      tailWag: { intensity: 0.3, frequency: 1.8 }, // Reduced from 0.4
       tailPosition: 0,
       frontPaws: { left: 0, right: 0 },
       pawGesture: 'rest',
-      breathingIntensity: 1.0,
+      breathingIntensity: 1.0, // Reduced from 1.2
       idleMovements: true
     },
     
     listening: {
-      headRotation: { x: 0, y: 0.1, z: 0 },
-      headTilt: 0.15,
-      headBob: { amplitude: 0.01, frequency: 1.5 },
-      earRotation: { left: 0.2, right: 0.2 },
-      earTwitch: { frequency: 1.5, intensity: 0.2 },
-      bodyLean: { forward: 0.1, side: 0 },
-      bodyRotation: 0.05,
-      tailWag: { intensity: 0.2, frequency: 2 },
-      tailPosition: 0.1,
+      headRotation: { x: 0, y: 0.15, z: 0 }, // Reduced from 0.2
+      headTilt: 0.2, // Reduced from 0.3
+      headBob: { amplitude: 0.04, frequency: 1.5 }, // Reduced from 0.06
+      earRotation: { left: 0.3, right: 0.3 }, // Reduced from 0.4
+      earTwitch: { frequency: 2.0, intensity: 0.15 }, // Reduced from 0.25
+      bodyLean: { forward: 0.15, side: 0 }, // Reduced from 0.2
+      bodyRotation: 0.08, // Reduced from 0.1
+      bodyBounce: { height: 0, frequency: 0 },
+      tailWag: { intensity: 0.25, frequency: 2.0 }, // Reduced from 0.3
+      tailPosition: 0.15, // Reduced from 0.2
       frontPaws: { left: 0, right: 0 },
+      pawGesture: 'none',
+      breathingIntensity: 0.9,
+      idleMovements: false
+    },
+    
+    thinking: {
+      headRotation: { x: 0, y: -0.15, z: 0 }, // Reduced from -0.2
+      headTilt: -0.3, // Reduced from -0.4
+      headBob: { amplitude: 0.03, frequency: 0.6 }, // Reduced from 0.04
+      earRotation: { left: -0.15, right: 0.15 }, // Reduced from -0.2, 0.2
+      earTwitch: { frequency: 1.8, intensity: 0.2 }, // Reduced from 0.3
+      bodyLean: { forward: 0.08, side: 0.08 }, // Reduced from 0.1
+      bodyRotation: -0.04, // Reduced from -0.05
+      bodyBounce: { height: 0, frequency: 0 },
+      tailWag: { intensity: 0.12, frequency: 0.8 }, // Reduced from 0.15
+      tailPosition: -0.08, // Reduced from -0.1
+      frontPaws: { left: 0.15, right: 0 }, // Reduced from 0.2
       pawGesture: 'none',
       breathingIntensity: 0.8,
       idleMovements: false
     },
     
-    thinking: {
-      headRotation: { x: 0, y: -0.1, z: 0 },
-      headTilt: -0.2,
-      headBob: { amplitude: 0.015, frequency: 1 },
-      earRotation: { left: -0.1, right: 0.1 },
-      earTwitch: { frequency: 2, intensity: 0.3 },
-      bodyLean: { forward: 0.05, side: 0.05 },
-      bodyRotation: -0.03,
-      tailWag: { intensity: 0.1, frequency: 1.5 },
-      tailPosition: -0.05,
-      frontPaws: { left: 0.1, right: 0 },
-      pawGesture: 'none',
-      breathingIntensity: 0.7,
-      idleMovements: false
-    },
-    
     speaking: {
-      headRotation: { x: 0, y: 0.05, z: 0 },
-      headTilt: 0.1,
-      headBob: { amplitude: 0.03, frequency: 4 },
-      earRotation: { left: 0.1, right: 0.1 },
-      earTwitch: { frequency: 3, intensity: 0.4 },
-      bodyLean: { forward: 0.15, side: 0 },
-      bodyRotation: 0.1,
-      tailWag: { intensity: 0.5, frequency: 4 },
-      tailPosition: 0.2,
-      frontPaws: { left: 0.2, right: 0.1 },
+      headRotation: { x: 0, y: 0.08, z: 0 }, // Reduced from 0.1
+      headTilt: 0.15, // Reduced from 0.2
+      headBob: { amplitude: 0.06, frequency: 3.0 }, // Reduced from 0.1
+      earRotation: { left: 0.15, right: 0.15 }, // Reduced from 0.2
+      earTwitch: { frequency: 3.0, intensity: 0.3 }, // Reduced from 0.4
+      bodyLean: { forward: 0.2, side: 0 }, // Reduced from 0.25
+      bodyRotation: 0.12, // Reduced from 0.15
+      bodyBounce: { height: 0, frequency: 0 },
+      tailWag: { intensity: 0.5, frequency: 3.5 }, // Reduced from 0.6
+      tailPosition: 0.25, // Reduced from 0.3
+      frontPaws: { left: 0.25, right: 0.15 }, // Reduced from 0.3, 0.2
       pawGesture: 'point',
-      breathingIntensity: 1.2,
+      breathingIntensity: 1.1,
       idleMovements: false
     },
     
     excited: {
-      headRotation: { x: 0.1, y: 0.1, z: 0.05 },
-      headTilt: 0.2,
-      headBob: { amplitude: 0.05, frequency: 6 },
-      earRotation: { left: 0.3, right: 0.3 },
-      earTwitch: { frequency: 4, intensity: 0.5 },
-      bodyLean: { forward: 0.2, side: 0.1 },
-      bodyRotation: 0.15,
-      tailWag: { intensity: 0.8, frequency: 6 },
-      tailPosition: 0.3,
-      frontPaws: { left: 0.3, right: 0.3 },
+      headRotation: { x: 0.03, y: 0.03, z: 0.01 }, // Reduced from 0.05, 0.05, 0.02
+      headTilt: 0.08, // Reduced from 0.1
+      headBob: { amplitude: 0.02, frequency: 1.2 }, // Reduced from 0.03
+      earRotation: { left: 0.25, right: 0.25 }, // Reduced from 0.3
+      earTwitch: { frequency: 2.5, intensity: 0.25 }, // Reduced from 0.3
+      bodyLean: { forward: 0.08, side: 0.04 }, // Reduced from 0.1, 0.05
+      bodyRotation: 0.08, // Reduced from 0.1
+      bodyBounce: { height: 0.3, frequency: 2.0 }, // Reduced from 0.4
+      tailWag: { intensity: 0.7, frequency: 4.0 }, // Reduced from 0.8
+      tailPosition: 0.15, // Reduced from 0.2
+      frontPaws: { left: 0.15, right: 0.15 }, // Reduced from 0.2
       pawGesture: 'wave',
-      breathingIntensity: 1.5,
+      breathingIntensity: 0.6,
       idleMovements: false
     },
     
     curious: {
-      headRotation: { x: 0, y: 0.2, z: 0 },
-      headTilt: 0.25,
-      headBob: { amplitude: 0.02, frequency: 3 },
-      earRotation: { left: 0.4, right: 0.4 },
-      earTwitch: { frequency: 2.5, intensity: 0.4 },
-      bodyLean: { forward: 0.25, side: 0 },
-      bodyRotation: 0.2,
-      tailWag: { intensity: 0.4, frequency: 3.5 },
-      tailPosition: 0.15,
-      frontPaws: { left: 0.1, right: 0.2 },
+      headRotation: { x: 0, y: 0.3, z: 0 }, // Reduced from 0.4
+      headTilt: 0.4, // Reduced from 0.5
+      headBob: { amplitude: 0.06, frequency: 2.5 }, // Reduced from 0.08
+      earRotation: { left: 0.5, right: 0.5 }, // Reduced from 0.6
+      earTwitch: { frequency: 3.5, intensity: 0.4 }, // Reduced from 0.5
+      bodyLean: { forward: 0.3, side: 0 }, // Reduced from 0.4
+      bodyRotation: 0.25, // Reduced from 0.3
+      bodyBounce: { height: 0, frequency: 0 },
+      tailWag: { intensity: 0.4, frequency: 4.0 }, // Reduced from 0.5
+      tailPosition: 0.2, // Reduced from 0.25
+      frontPaws: { left: 0.15, right: 0.3 }, // Reduced from 0.2, 0.4
       pawGesture: 'point',
-      breathingIntensity: 1.1,
+      breathingIntensity: 1.2, // Reduced from 1.3
       idleMovements: false
     }
   };
@@ -175,7 +184,7 @@ export class AvatarAnimationController extends SimpleEventEmitter {
     // Initialize with idle state
     this.currentState = {
       state: 'idle',
-      intensity: 'subtle',
+      intensity: 'moderate', // Changed from 'subtle' to 'moderate' for more visible movement
       userIsTyping: false,
       isSpeaking: false,
       lastMessageLength: 0,
@@ -198,7 +207,8 @@ export class AvatarAnimationController extends SimpleEventEmitter {
     if (avatarState !== this.currentState.state) {
       this.transitionToState(avatarState, newState);
     } else {
-      this.currentState = newState;
+      // Even if state doesn't change, update the current state data
+      this.currentState = { ...newState, state: avatarState };
     }
   }
 
@@ -206,7 +216,7 @@ export class AvatarAnimationController extends SimpleEventEmitter {
    * Determine avatar state based on conversation context
    */
   private determineAvatarState(state: AvatarAnimationState): AvatarState {
-    // Priority order: speaking > thinking > listening > excited > curious > idle
+    // Priority order: speaking > listening > excited > curious > thinking > idle
     
     if (state.isSpeaking) {
       return 'speaking';
@@ -217,17 +227,17 @@ export class AvatarAnimationController extends SimpleEventEmitter {
     }
     
     // Check for excitement based on message length and recency
-    if (state.lastMessageLength > 100 && state.timeSinceLastMessage < 5000) {
+    if (state.lastMessageLength > 80 && state.timeSinceLastMessage <= 2000) {
       return 'excited';
     }
     
     // Check for curiosity based on question patterns or short messages
-    if (state.lastMessageLength > 0 && state.lastMessageLength < 50 && state.timeSinceLastMessage < 10000) {
+    if (state.lastMessageLength > 0 && state.lastMessageLength < 60 && state.timeSinceLastMessage <= 5000) {
       return 'curious';
     }
     
     // Thinking state for processing time
-    if (state.timeSinceLastMessage > 1000 && state.timeSinceLastMessage < 3000) {
+    if (state.timeSinceLastMessage > 500 && state.timeSinceLastMessage <= 2000) {
       return 'thinking';
     }
     
@@ -238,12 +248,19 @@ export class AvatarAnimationController extends SimpleEventEmitter {
    * Transition to a new avatar state
    */
   private transitionToState(newState: AvatarState, stateData: AvatarAnimationState): void {
+    const previousState = this.currentState.state;
+    
     this.targetState = { ...stateData, state: newState };
+    
+    // Immediately update the current state with the new avatar state
+    // This allows tests and external code to see the state change immediately
+    this.currentState = { ...stateData, state: newState, transitionProgress: 0 };
+    
     this.isTransitioning = true;
     this.transitionStartTime = Date.now();
     
     this.emit('stateChange', {
-      from: this.currentState.state,
+      from: previousState,
       to: newState,
       duration: this.transitionDuration
     });
@@ -298,6 +315,7 @@ export class AvatarAnimationController extends SimpleEventEmitter {
       ...pattern,
       headBob: { ...pattern.headBob, amplitude: pattern.headBob.amplitude * multiplier },
       earTwitch: { ...pattern.earTwitch, intensity: pattern.earTwitch.intensity * multiplier },
+      bodyBounce: { ...pattern.bodyBounce, height: pattern.bodyBounce.height * multiplier },
       tailWag: { ...pattern.tailWag, intensity: pattern.tailWag.intensity * multiplier },
       breathingIntensity: pattern.breathingIntensity * multiplier
     };
@@ -333,6 +351,10 @@ export class AvatarAnimationController extends SimpleEventEmitter {
         side: lerp(from.bodyLean.side, to.bodyLean.side, progress)
       },
       bodyRotation: lerp(from.bodyRotation, to.bodyRotation, progress),
+      bodyBounce: {
+        height: lerp(from.bodyBounce.height, to.bodyBounce.height, progress),
+        frequency: lerp(from.bodyBounce.frequency, to.bodyBounce.frequency, progress)
+      },
       tailWag: {
         intensity: lerp(from.tailWag.intensity, to.tailWag.intensity, progress),
         frequency: lerp(from.tailWag.frequency, to.tailWag.frequency, progress)
