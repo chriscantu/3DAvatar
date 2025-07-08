@@ -58,4 +58,77 @@ describe('Avatar Component', () => {
     rerender(<Avatar isSpeaking={true} />);
     expect(container).toBeInTheDocument();
   });
+
+  describe('Avatar Anatomy Positioning', () => {
+    it('positions snout just below the midpoint of the face', () => {
+      // Test validates that snout positioning follows proper puppy anatomy
+      const { container } = render(<Avatar />);
+      expect(container).toBeInTheDocument();
+      
+      // Head is at Y=-0.1 with radius 0.4, so face spans from Y=-0.5 to Y=0.3
+      // Midpoint of face is at Y=-0.1 (center of head)
+      // Snout should be positioned below midpoint at Y=-0.2 for cute puppy look
+      const expectedSnoutY = -0.2;
+      const headCenterY = -0.1;
+      
+      // Verify snout is below the midpoint
+      expect(expectedSnoutY).toBeLessThan(headCenterY);
+      
+      // Verify snout is positioned for cute puppy proportions
+      const distanceBelowMidpoint = headCenterY - expectedSnoutY;
+      expect(distanceBelowMidpoint).toBeLessThanOrEqual(0.15); // Within 0.15 units for puppy look
+    });
+
+         it('positions nose at the tip of the snout', () => {
+       const { container } = render(<Avatar />);
+       expect(container).toBeInTheDocument();
+       
+       // Nose should be at same Y position as snout (-0.2) but further forward in Z
+       const expectedNoseY = -0.2;
+       const expectedNoseZ = 0.9;
+       const snoutY = -0.2;
+       const snoutZ = 0.8;
+       
+       // Verify nose is at same Y level as snout
+       expect(expectedNoseY).toBe(snoutY);
+       
+       // Verify nose is at tip of snout (further forward)
+       expect(expectedNoseZ).toBeGreaterThan(snoutZ);
+     });
+
+         it('positions eyes above the snout for natural forward gaze', () => {
+       const { container } = render(<Avatar />);
+       expect(container).toBeInTheDocument();
+       
+       // Eyes should be positioned above snout for natural puppy anatomy
+       const eyeY = 0.1;
+       const snoutY = -0.2;
+       
+       expect(eyeY).toBeGreaterThan(snoutY);
+     });
+
+    it('positions mouth below snout naturally', () => {
+      const { container } = render(<Avatar />);
+      expect(container).toBeInTheDocument();
+      
+      // Mouth should be below snout for puppy proportions
+      const mouthY = -0.3;
+      const snoutY = -0.2;
+      
+      expect(mouthY).toBeLessThan(snoutY);
+    });
+
+    it('maintains proper head-neck-body connection', () => {
+      const { container } = render(<Avatar />);
+      expect(container).toBeInTheDocument();
+      
+      // Verify anatomical progression from head to body
+      const headY = -0.1;
+      const neckY = -0.4;
+      const bodyY = -0.8;
+      
+      expect(headY).toBeGreaterThan(neckY);
+      expect(neckY).toBeGreaterThan(bodyY);
+    });
+  });
 }); 

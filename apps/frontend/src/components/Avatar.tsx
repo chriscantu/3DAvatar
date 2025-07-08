@@ -14,13 +14,13 @@ interface AvatarProps {
   timeSinceLastMessage?: number;
 }
 
-// Avatar color configuration for easy customization
+// Avatar color configuration for easy customization - puppy-like colors
 const AVATAR_COLORS = {
-  PRIMARY_FUR: '#8B4513',
-  SECONDARY_FUR: '#A0522D', 
+  PRIMARY_FUR: '#D2691E',    // Warmer brown like the reference puppy
+  SECONDARY_FUR: '#F5DEB3',  // Cream/beige for snout and chest
   BLACK: '#000000',
   WHITE: '#FFFFFF',
-  PINK: '#FF69B4',
+  PINK: '#FFB6C1',          // Softer pink
   GOLD: '#FFD700'
 } as const;
 
@@ -93,17 +93,20 @@ const Avatar: React.FC<AvatarProps> = ({
   // Memoize geometries to prevent recreation
   const geometries = useMemo(() => {
     return {
-      // Head and body parts - improved proportions
-      head: new THREE.SphereGeometry(0.35, GEOMETRY_CONFIG.SPHERE_SEGMENTS, GEOMETRY_CONFIG.SPHERE_SEGMENTS), // Slightly smaller head
-      snout: new THREE.CapsuleGeometry(0.12, 0.3, 4, 8), // More realistic snout shape
-      nose: new THREE.SphereGeometry(0.06, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      eye: new THREE.SphereGeometry(0.06, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS), // Slightly smaller eyes
-      pupil: new THREE.SphereGeometry(0.03, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
-      ear: new THREE.ConeGeometry(0.08, 0.25, 8), // More dog-like triangular ears
+      // Head and body parts - puppy-like proportions
+      head: new THREE.SphereGeometry(0.4, GEOMETRY_CONFIG.SPHERE_SEGMENTS, GEOMETRY_CONFIG.SPHERE_SEGMENTS), // Larger head for puppy look
+      snout: new THREE.CapsuleGeometry(0.08, 0.2, 4, 8), // Shorter, cuter snout
+      nose: new THREE.SphereGeometry(0.05, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
+      eye: new THREE.SphereGeometry(0.08, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS), // Larger, more expressive eyes
+      pupil: new THREE.SphereGeometry(0.04, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
+      ear: new THREE.SphereGeometry(0.12, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS), // Floppy round ears
       mouth: new THREE.SphereGeometry(0.08, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS, GEOMETRY_CONFIG.LOW_POLY_SEGMENTS),
       
       // Body
       body: new THREE.BoxGeometry(0.6, 0.4, 1.2),
+      
+      // Neck - connects head to body
+      neck: new THREE.CylinderGeometry(0.18, 0.22, 0.4, GEOMETRY_CONFIG.CYLINDER_SEGMENTS),
       
       // Legs and paws
       leg: new THREE.CylinderGeometry(0.08, 0.08, 0.8, GEOMETRY_CONFIG.CYLINDER_SEGMENTS),
@@ -320,15 +323,15 @@ const Avatar: React.FC<AvatarProps> = ({
       const headRotX = headRef.current.rotation.x;
       
       // Pupils move slightly in the direction of head rotation for natural eye movement
-      leftPupilRef.current.position.x = -0.12 + headRotY * 0.01;
-      leftPupilRef.current.position.y = 0.05 - headRotX * 0.01;
+      leftPupilRef.current.position.x = -0.15 + headRotY * 0.01;
+      leftPupilRef.current.position.y = 0.1 - headRotX * 0.01;
     }
     if (rightPupilRef.current && headRef.current) {
       const headRotY = headRef.current.rotation.y;
       const headRotX = headRef.current.rotation.x;
       
-      rightPupilRef.current.position.x = 0.12 + headRotY * 0.01;
-      rightPupilRef.current.position.y = 0.05 - headRotX * 0.01;
+      rightPupilRef.current.position.x = 0.15 + headRotY * 0.01;
+      rightPupilRef.current.position.y = 0.1 - headRotX * 0.01;
     }
   });
 
@@ -351,29 +354,32 @@ const Avatar: React.FC<AvatarProps> = ({
         </mesh>
       )}
       
-      {/* Head - positioned at front of body with improved proportions */}
-      <mesh ref={headRef} position={[0, 0, 0.6]} geometry={geometries.head} material={materials.primaryFur} castShadow />
+      {/* Neck - connects head to body naturally */}
+      <mesh position={[0, -0.4, 0.3]} geometry={geometries.neck} material={materials.primaryFur} castShadow />
       
-      {/* Snout - more realistic positioning and rotation */}
-      <mesh position={[0, -0.15, 0.85]} rotation={[Math.PI / 2, 0, 0]} geometry={geometries.snout} material={materials.secondaryFur} castShadow />
+      {/* Head - positioned to connect naturally with neck but not too low */}
+      <mesh ref={headRef} position={[0, -0.1, 0.6]} geometry={geometries.head} material={materials.primaryFur} castShadow />
       
-      {/* Nose - positioned at tip of snout */}
-      <mesh position={[0, -0.15, 1.0]} geometry={geometries.nose} material={materials.black} castShadow />
+      {/* Snout - shorter and cuter like the reference puppy */}
+      <mesh position={[0, -0.2, 0.8]} rotation={[Math.PI / 2, 0, 0]} geometry={geometries.snout} material={materials.secondaryFur} castShadow />
       
-      {/* Eyes - positioned prominently on the front of the head for maximum visibility */}
-      <mesh position={[-0.12, 0.05, 0.95]} geometry={geometries.eye} material={materials.white} castShadow />
-      <mesh position={[0.12, 0.05, 0.95]} geometry={geometries.eye} material={materials.white} castShadow />
+      {/* Nose - positioned at tip of shorter snout */}
+      <mesh position={[0, -0.2, 0.9]} geometry={geometries.nose} material={materials.black} castShadow />
       
-      {/* Pupils - positioned with sufficient distance to prevent z-fighting, no shadows to reduce conflicts */}
-      <mesh ref={leftPupilRef} position={[-0.12, 0.05, 1.02]} geometry={geometries.pupil} material={materials.black} />
-      <mesh ref={rightPupilRef} position={[0.12, 0.05, 1.02]} geometry={geometries.pupil} material={materials.black} />
+      {/* Eyes - larger and more expressive like the reference puppy */}
+      <mesh position={[-0.15, 0.1, 0.85]} geometry={geometries.eye} material={materials.white} castShadow />
+      <mesh position={[0.15, 0.1, 0.85]} geometry={geometries.eye} material={materials.white} castShadow />
       
-      {/* Ears - positioned on top of head for proper dog-like appearance */}
-      <mesh ref={leftEarRef} position={[-0.2, 0.25, 0.75]} rotation={[0, 0, -0.3]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
-      <mesh ref={rightEarRef} position={[0.2, 0.25, 0.75]} rotation={[0, 0, 0.3]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      {/* Pupils - positioned to match larger eyes */}
+      <mesh ref={leftPupilRef} position={[-0.15, 0.1, 0.89]} geometry={geometries.pupil} material={materials.black} />
+      <mesh ref={rightPupilRef} position={[0.15, 0.1, 0.89]} geometry={geometries.pupil} material={materials.black} />
       
-      {/* Mouth - positioned under snout */}
-      <mesh ref={mouthRef} position={[0, -0.25, 0.95]} geometry={geometries.mouth} material={materials.pink} castShadow />
+      {/* Ears - floppy ears hanging down like in the reference image */}
+      <mesh ref={leftEarRef} position={[-0.25, -0.05, 0.65]} rotation={[0.2, 0, -0.8]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      <mesh ref={rightEarRef} position={[0.25, -0.05, 0.65]} rotation={[0.2, 0, 0.8]} geometry={geometries.ear} material={materials.primaryFur} castShadow />
+      
+      {/* Mouth - positioned under shorter snout */}
+      <mesh ref={mouthRef} position={[0, -0.3, 0.85]} geometry={geometries.mouth} material={materials.pink} castShadow />
       
       {/* Body - longer dog body */}
       <mesh position={[0, -0.8, 0]} geometry={geometries.body} material={materials.primaryFur} castShadow />
@@ -400,11 +406,11 @@ const Avatar: React.FC<AvatarProps> = ({
       {/* Tail tip */}
       <mesh position={[0, -0.6, -0.95]} geometry={geometries.tailTip} material={materials.primaryFur} castShadow />
       
-      {/* Collar - positioned at neck area */}
-      <mesh position={[0, -0.4, 0.5]} geometry={geometries.collar} material={materials.pink} castShadow />
+      {/* Collar - positioned properly on the neck */}
+      <mesh position={[0, -0.4, 0.3]} geometry={geometries.collar} material={materials.pink} castShadow />
       
       {/* Collar tag */}
-      <mesh position={[0.2, -0.4, 0.5]} geometry={geometries.collarTag} material={materials.gold} castShadow />
+      <mesh position={[0.2, -0.4, 0.3]} geometry={geometries.collarTag} material={materials.gold} castShadow />
     </group>
   );
 };

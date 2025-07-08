@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5177',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -32,12 +32,12 @@ export default defineConfig({
   webServer: [
     {
       command: 'cd apps/frontend && npm run dev',
-      port: 5173,
+      port: 5177,
       reuseExistingServer: !process.env.CI,
     },
     {
       command: 'cd apps/backend && npm run dev',
-      port: 3000,
+      port: 3001,
       reuseExistingServer: !process.env.CI,
     },
   ],

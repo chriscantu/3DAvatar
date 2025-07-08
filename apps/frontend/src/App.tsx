@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ThreeDRoom from './components/ThreeDRoom';
 import ChatInterface from './components/ChatInterface';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -13,24 +13,74 @@ const App: React.FC = () => {
   const [userIsTyping, setUserIsTyping] = useState(false);
   const [lastMessageLength, setLastMessageLength] = useState(0);
   const [lastMessageTime, setLastMessageTime] = useState(0);
+  const [timeSinceLastMessage, setTimeSinceLastMessage] = useState(0);
+  
+  // Use ref to track the interval for time calculation
+  const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update time since last message every 100ms for smooth avatar transitions
+  useEffect(() => {
+    if (lastMessageTime > 0) {
+      const updateTime = () => {
+        const now = Date.now();
+        const timeDiff = now - lastMessageTime;
+        setTimeSinceLastMessage(timeDiff);
+        
+        // Add debug logging
+        console.log('Avatar state update:', {
+          userIsTyping,
+          isAvatarSpeaking,
+          lastMessageLength,
+          timeSinceLastMessage: timeDiff,
+          lastMessageTime: new Date(lastMessageTime).toLocaleTimeString()
+        });
+      };
+      
+      // Update immediately
+      updateTime();
+      
+      // Set up interval for continuous updates
+      timeIntervalRef.current = setInterval(updateTime, 100);
+      
+      // Clear interval after 10 seconds to avoid unnecessary updates
+      setTimeout(() => {
+        if (timeIntervalRef.current) {
+          clearInterval(timeIntervalRef.current);
+          timeIntervalRef.current = null;
+        }
+      }, 10000);
+    }
+    
+    return () => {
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+        timeIntervalRef.current = null;
+      }
+    };
+  }, [lastMessageTime, userIsTyping, isAvatarSpeaking, lastMessageLength]);
 
   const handleMessageSent = useCallback((message: string) => {
     console.log('Message sent:', message);
+    const now = Date.now();
+    
     // Update message tracking
     setLastMessageLength(message.length);
-    setLastMessageTime(Date.now());
+    setLastMessageTime(now);
+    setTimeSinceLastMessage(0);
     setUserIsTyping(false);
     
     // This will trigger avatar speaking animation
     setIsAvatarSpeaking(true);
     
-    // Simulate avatar speaking duration
+    // Simulate avatar speaking duration based on message length
+    const speakingDuration = Math.max(2000, Math.min(8000, message.length * 50));
     setTimeout(() => {
       setIsAvatarSpeaking(false);
-    }, 3000);
+    }, speakingDuration);
   }, []);
 
   const handleUserTyping = useCallback((isTyping: boolean) => {
+    console.log('User typing state changed:', isTyping);
     setUserIsTyping(isTyping);
   }, []);
 
@@ -119,7 +169,7 @@ const App: React.FC = () => {
                 isAvatarSpeaking={isAvatarSpeaking}
                 userIsTyping={userIsTyping}
                 lastMessageLength={lastMessageLength}
-                timeSinceLastMessage={Date.now() - lastMessageTime}
+                timeSinceLastMessage={timeSinceLastMessage}
               />
             </ErrorBoundary>
           </div>

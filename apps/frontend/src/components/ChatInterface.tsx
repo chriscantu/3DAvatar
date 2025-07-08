@@ -378,6 +378,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return null;
   }, [error, voiceError]);
 
+  // Handle message send - stop typing state
+  const handleMessageSend = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (onUserTyping) {
+      onUserTyping(false);
+    }
+  }, [onUserTyping]);
+
   // Optimized message sending
   const sendMessage = useCallback(async (messageText: string) => {
     const trimmedMessage = messageText.trim();
@@ -394,6 +404,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     // Clear input and call parent callback
     setInputText('');
+    
+    // Stop typing state when message is sent
+    handleMessageSend();
+    
     onMessageSent(trimmedMessage);
 
     // Set loading states
@@ -464,7 +478,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setIsTyping(false);
       abortControllerRef.current = null;
     }
-  }, [addMessage, clearError, onMessageSent, setError, setIsTyping]);
+  }, [addMessage, clearError, onMessageSent, setError, setIsTyping, handleMessageSend]);
 
   // Optimized form submission
   const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -474,16 +488,72 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [inputText, canSendMessage, sendMessage]);
 
-  // Optimized input change
+  // Enhanced typing detection with continuous state management
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputText(value);
     
     // Notify parent about typing state
     if (onUserTyping) {
-      onUserTyping(value.length > 0);
+      // User is actively typing
+      onUserTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set timeout to detect when user stops typing - reduced for better responsiveness
+      typingTimeoutRef.current = setTimeout(() => {
+        onUserTyping(false);
+      }, 500); // Stop typing after 0.5 seconds of inactivity
     }
   }, [onUserTyping]);
+
+  // Handle input focus - user is paying attention
+  const handleInputFocus = useCallback(() => {
+    if (onUserTyping) {
+      onUserTyping(true);
+    }
+  }, [onUserTyping]);
+
+  // Handle input blur - user stopped interacting
+  const handleInputBlur = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (onUserTyping) {
+      onUserTyping(false);
+    }
+  }, [onUserTyping]);
+
+  // Handle keydown for more responsive typing detection
+  const handleKeyDown = useCallback(() => {
+    if (onUserTyping) {
+      onUserTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set timeout to detect when user stops typing - reduced for better responsiveness
+      typingTimeoutRef.current = setTimeout(() => {
+        onUserTyping(false);
+      }, 500); // Stop typing after 0.5 seconds of inactivity
+    }
+  }, [onUserTyping]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Optimized voice toggle
   const handleVoiceToggle = useCallback(() => {
@@ -636,7 +706,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             type="text"
             value={inputText}
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             onKeyPress={handleKeyPress}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
             placeholder={isListening ? 'Listening...' : 'Type your message...'}
             disabled={isLoading}
             className="message-input"

@@ -22,7 +22,12 @@ vi.mock('three', () => ({
   MeshStandardMaterial: vi.fn(),
   SphereGeometry: vi.fn(),
   CylinderGeometry: vi.fn(),
+  CapsuleGeometry: vi.fn(), // Added for snout geometry
+  ConeGeometry: vi.fn(),    // Added for ear geometry
   Vector3: vi.fn(),
+  MathUtils: {
+    lerp: vi.fn((a, b, t) => a + (b - a) * t),
+  },
 }));
 
 // Mock @react-three/fiber
