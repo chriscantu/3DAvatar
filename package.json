@@ -14,13 +14,7 @@
     "test:all": "npm run test:frontend && npm run test:backend && npm run test:e2e",
     "test:watch": "concurrently \"cd apps/frontend && npm run test:watch\" \"cd apps/backend && npm run test:watch\"",
     "test:coverage": "concurrently \"npm run test:frontend -- --coverage\" \"npm run test:backend -- --coverage\"",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "npm run build:frontend && npm run build:backend",
-    "test": "npm run test:all",
-    "lint:fix": "cd apps/frontend && npm run lint:fix && cd ../backend && npm run lint:fix",
-    "type-check": "cd apps/frontend && npm run type-check && cd ../backend && npm run type-check",
-    "format": "cd apps/frontend && npm run format && cd ../backend && npm run format",
-    "claude": "./claude-commands.sh"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
   },
   "devDependencies": {
     "@playwright/test": "^1.53.2",
