@@ -83,6 +83,21 @@ npm run dev
 
 ## 🧪 Testing
 
+### Avatar Testing Framework
+The project uses a declarative testing approach focused on observable behavior:
+
+```bash
+# Run avatar behavioral tests
+npm run test:avatar:visual      # Visual behavior tests
+npm run test:avatar:performance # Performance behavior tests
+npm run test:avatar:behavioral  # Behavioral state tests
+npm run test:avatar:full        # All avatar tests
+```
+
+**Testing Documentation:**
+- **[Avatar Testing Implementation Plan](./AVATAR_TESTING_IMPLEMENTATION_PLAN.md)** - Testing strategy and approach
+- **[Avatar Testing Usage Guide](./AVATAR_TESTING_USAGE_GUIDE.md)** - Practical testing instructions
+
 ### Unit Tests
 ```bash
 # Frontend tests
@@ -107,17 +122,18 @@ npm run test:e2e
 2. Configure environment variables in Vercel dashboard
 3. Deploy both frontend and backend
 
-## 📝 Development
+## 📚 Documentation
 
-See [PLAN.md](./PLAN.md) for detailed development roadmap and progress tracking.
+### Core Documentation
+- **[Architecture Guide](./ARCHITECTURE.md)** - System architecture and technical design
+- **[Design Guidelines](./DESIGN.md)** - UI/UX design principles and patterns
+- **[Implementation Guide](./IMPLEMENTATION.md)** - Development best practices and standards
+- **[Testing Strategy](./TESTING.md)** - Testing approach and guidelines
+- **[Deployment Guide](./DEPLOYMENT.md)** - Deployment instructions and configuration
 
-### Phase 2 Services Documentation
-
-Phase 2 introduces advanced AI services for enhanced user experience:
-
-- **[Phase 2 Services Guide](./docs/PHASE2_SERVICES_GUIDE.md)** - Comprehensive implementation guide
-- **[Technical Integration Guide](./docs/PHASE2_TECHNICAL_INTEGRATION.md)** - Advanced technical details
-- **[Quick Reference](./docs/PHASE2_QUICK_REFERENCE.md)** - Essential commands and configurations
+### Phase 2 Services
+Advanced AI services for enhanced user experience:
+- **[Phase 2 Quick Reference](./docs/PHASE2_QUICK_REFERENCE.md)** - Essential commands and configurations
 
 **Phase 2 Services:**
 - 🧠 **Emotional Intelligence** - Emotion detection and empathetic responses

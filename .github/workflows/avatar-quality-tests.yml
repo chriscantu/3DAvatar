@@ -1,0 +1,264 @@
+name: Avatar Quality Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/frontend/src/components/Avatar*'
+      - 'apps/frontend/src/components/GLTFPuppyAvatar*'
+      - 'apps/frontend/src/components/AnimatedPuppyAvatar*'
+      - 'apps/frontend/src/components/ThreeDRoom*'
+      - 'apps/frontend/src/components/__tests__/Avatar*'
+      - 'apps/frontend/src/utils/avatar-*'
+      - 'apps/frontend/src/services/breathing*'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/frontend/src/components/Avatar*'
+      - 'apps/frontend/src/components/GLTFPuppyAvatar*'
+      - 'apps/frontend/src/components/AnimatedPuppyAvatar*'
+      - 'apps/frontend/src/components/ThreeDRoom*'
+      - 'apps/frontend/src/components/__tests__/Avatar*'
+      - 'apps/frontend/src/utils/avatar-*'
+      - 'apps/frontend/src/services/breathing*'
+
+jobs:
+  avatar-visual-tests:
+    name: Avatar Visual Behavior Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'apps/frontend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./apps/frontend
+      run: npm ci
+      
+    - name: Run Avatar Visual Behavior Tests
+      working-directory: ./apps/frontend
+      run: npm run test:avatar:visual
+      
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: avatar-visual-test-results
+        path: apps/frontend/test-results/
+        retention-days: 7
+
+  avatar-performance-tests:
+    name: Avatar Performance Behavior Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'apps/frontend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./apps/frontend
+      run: npm ci
+      
+    - name: Run Avatar Performance Tests
+      working-directory: ./apps/frontend
+      run: npm run test:avatar:performance
+      
+    - name: Upload performance results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: avatar-performance-test-results
+        path: apps/frontend/test-results/
+        retention-days: 7
+
+  avatar-behavioral-tests:
+    name: Avatar Behavioral State Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'apps/frontend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./apps/frontend
+      run: npm ci
+      
+    - name: Run Avatar Behavioral State Tests
+      working-directory: ./apps/frontend
+      run: npm run test:avatar:behavioral
+      
+    - name: Upload behavioral test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: avatar-behavioral-test-results
+        path: apps/frontend/test-results/
+        retention-days: 7
+
+  avatar-quality-summary:
+    name: Avatar Quality Summary
+    runs-on: ubuntu-latest
+    needs: [avatar-visual-tests, avatar-performance-tests, avatar-behavioral-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'apps/frontend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./apps/frontend
+      run: npm ci
+      
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: test-results/
+        
+    - name: Generate Avatar Quality Report
+      working-directory: ./apps/frontend
+      run: |
+        echo "# Avatar Quality Test Summary" > avatar-quality-report.md
+        echo "" >> avatar-quality-report.md
+        echo "## Test Results" >> avatar-quality-report.md
+        echo "" >> avatar-quality-report.md
+        
+        # Check if visual tests passed
+        if [ "${{ needs.avatar-visual-tests.result }}" == "success" ]; then
+          echo "✅ **Visual Behavior Tests**: PASSED" >> avatar-quality-report.md
+        else
+          echo "❌ **Visual Behavior Tests**: FAILED" >> avatar-quality-report.md
+        fi
+        
+        # Check if performance tests passed
+        if [ "${{ needs.avatar-performance-tests.result }}" == "success" ]; then
+          echo "✅ **Performance Behavior Tests**: PASSED" >> avatar-quality-report.md
+        else
+          echo "❌ **Performance Behavior Tests**: FAILED" >> avatar-quality-report.md
+        fi
+        
+        # Check if behavioral tests passed
+        if [ "${{ needs.avatar-behavioral-tests.result }}" == "success" ]; then
+          echo "✅ **Behavioral State Tests**: PASSED" >> avatar-quality-report.md
+        else
+          echo "❌ **Behavioral State Tests**: FAILED" >> avatar-quality-report.md
+        fi
+        
+        echo "" >> avatar-quality-report.md
+        echo "## Overall Status" >> avatar-quality-report.md
+        echo "" >> avatar-quality-report.md
+        
+        # Determine overall status
+        if [ "${{ needs.avatar-visual-tests.result }}" == "success" ] && 
+           [ "${{ needs.avatar-performance-tests.result }}" == "success" ] && 
+           [ "${{ needs.avatar-behavioral-tests.result }}" == "success" ]; then
+          echo "🎉 **Overall Avatar Quality**: EXCELLENT" >> avatar-quality-report.md
+          echo "All avatar behavior tests passed successfully!" >> avatar-quality-report.md
+        else
+          echo "⚠️ **Overall Avatar Quality**: NEEDS ATTENTION" >> avatar-quality-report.md
+          echo "Some avatar behavior tests failed. Please review the results." >> avatar-quality-report.md
+        fi
+        
+        echo "" >> avatar-quality-report.md
+        echo "## Testing Framework" >> avatar-quality-report.md
+        echo "" >> avatar-quality-report.md
+        echo "This report was generated using the new declarative avatar testing framework that focuses on:" >> avatar-quality-report.md
+        echo "- Observable behavior described in plain English" >> avatar-quality-report.md
+        echo "- Real-world performance metrics" >> avatar-quality-report.md
+        echo "- User experience validation" >> avatar-quality-report.md
+        echo "- Behavioral state machine testing" >> avatar-quality-report.md
+        
+        cat avatar-quality-report.md
+        
+    - name: Upload Quality Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: avatar-quality-report
+        path: apps/frontend/avatar-quality-report.md
+        retention-days: 30
+        
+    - name: Comment PR with Quality Report
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './apps/frontend/avatar-quality-report.md';
+          
+          if (fs.existsSync(path)) {
+            const report = fs.readFileSync(path, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+          }
+
+  manual-qa-reminder:
+    name: Manual QA Reminder
+    runs-on: ubuntu-latest
+    needs: [avatar-quality-summary]
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'avatar-changes')
+    
+    steps:
+    - name: Remind about Manual QA
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## Manual QA Reminder 🧪
+            
+            This PR contains avatar changes. Please conduct manual QA testing using the Avatar Manual QA Framework:
+            
+            ### Manual Testing Checklist
+            1. **Visual Quality**: Verify avatar appears friendly and natural
+            2. **Animation Quality**: Check breathing and idle movements
+            3. **Interaction Response**: Test typing and speaking states
+            4. **Performance**: Monitor FPS and system resources
+            
+            ### How to Test
+            1. Start the dev server: \`npm run dev\`
+            2. Open browser to http://localhost:5173
+            3. Use the manual QA framework in \`apps/frontend/src/utils/avatar-manual-qa-framework.ts\`
+            4. Follow the structured checklists for comprehensive testing
+            
+            ### Expected Standards
+            - Overall Grade: B or better (80+ score)
+            - Critical Issues: 0 failures
+            - Performance: 55+ FPS, <100MB memory
+            - User Experience: Friendly and engaging
+            
+            Please complete manual QA testing before merging this PR.`
+          }); 

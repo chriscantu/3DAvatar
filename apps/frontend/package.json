@@ -12,7 +12,13 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:avatar": "vitest --run --testNamePattern=\"Avatar\"",
+    "test:avatar:visual": "vitest --run --testNamePattern=\"Avatar Visual Behavior\"",
+    "test:avatar:performance": "vitest --run --testNamePattern=\"Avatar Performance Behavior\"",
+    "test:avatar:behavioral": "vitest --run --testNamePattern=\"Avatar Behavioral States\"",
+    "test:avatar:watch": "vitest --testNamePattern=\"Avatar\"",
+    "test:avatar:full": "npm run test:avatar:visual && npm run test:avatar:performance && npm run test:avatar:behavioral"
   },
   "dependencies": {
     "@react-three/drei": "^10.4.4",
