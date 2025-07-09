@@ -247,6 +247,8 @@ const ModelRoom = ({
 }) => {
   const [roomModelFailed, setRoomModelFailed] = useState(false);
   
+  console.log('ModelRoom rendering with:', { roomModelUrl, furnitureModels });
+  
   const modelManagement = useRoomModels(furnitureModels.map(model => ({
     modelUrl: model.url,
     position: model.position,
@@ -266,6 +268,7 @@ const ModelRoom = ({
 
   // If room model failed to load, fall back to geometric room
   if (roomModelFailed) {
+    console.log('Room model failed, falling back to geometric room');
     return (
       <GeometricRoom 
         isAvatarSpeaking={isAvatarSpeaking}

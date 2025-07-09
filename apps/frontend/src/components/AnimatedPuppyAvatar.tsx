@@ -7,6 +7,7 @@ import {
   ANIMATION_TIMING,
   MATH_CONSTANTS
 } from '../config/breathingAnimationConstants';
+import { AVATAR_CONFIG } from '../config/roomConstants';
 
 interface AnimatedPuppyAvatarProps {
   position?: [number, number, number];
@@ -144,7 +145,7 @@ const AnimatedPuppyAvatar: React.FC<AnimatedPuppyAvatarProps> = ({
   });
 
   return (
-    <group ref={groupRef} position={position}>
+    <group ref={groupRef} position={position} scale={[AVATAR_CONFIG.SCALE, AVATAR_CONFIG.SCALE, AVATAR_CONFIG.SCALE]}>
       {/* Body */}
       <mesh ref={bodyRef} position={[0, 0, 0]}>
         <boxGeometry args={[1, 1, 1]} />
@@ -152,13 +153,13 @@ const AnimatedPuppyAvatar: React.FC<AnimatedPuppyAvatarProps> = ({
       </mesh>
 
       {/* Chest */}
-      <mesh ref={chestRef} position={[0, AVATAR_ANIMATION.POSITION.CHEST_BASE_Y, AVATAR_ANIMATION.POSITION.CHEST_BASE_Z]}>
+      <mesh ref={chestRef} position={[0, AVATAR_CONFIG.POSITION.CHEST_BASE_Y, AVATAR_CONFIG.POSITION.CHEST_BASE_Z]}>
         <boxGeometry args={[0.8, 0.6, 0.8]} />
         <meshStandardMaterial color="#A0522D" />
       </mesh>
 
       {/* Head */}
-      <mesh ref={headRef} position={[0, AVATAR_ANIMATION.POSITION.HEAD_BASE_Y, 0.6]}>
+      <mesh ref={headRef} position={[0, AVATAR_CONFIG.POSITION.HEAD_BASE_Y, 0.6]}>
         <boxGeometry args={[0.8, 0.8, 0.8]} />
         <meshStandardMaterial color="#8B4513" />
       </mesh>
