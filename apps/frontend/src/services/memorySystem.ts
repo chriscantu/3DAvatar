@@ -15,18 +15,21 @@ import type {
   MemoryLimits
 } from '../types/context';
 import type { ChatMessage } from '../types/common';
+import type { IMemorySystem, ServiceHealth } from '../interfaces/ServiceInterfaces';
 
 /**
  * Comprehensive Memory Management System
  * Handles different types of memory for intelligent conversation continuity
  */
-export class AvatarMemorySystem implements MemorySystem {
+export class AvatarMemorySystem implements MemorySystem, IMemorySystem {
   shortTermMemory: ShortTermMemoryManager;
   longTermMemory: LongTermMemoryManager;
   workingMemory: WorkingMemoryManager;
 
   private memoryLimits: MemoryLimits;
   private eventListeners = new Map<string, Array<(data: Record<string, unknown>) => void>>();
+  private isInitialized = false;
+  private isHealthy = true;
 
   constructor(limits: Partial<MemoryLimits> = {}) {
     this.memoryLimits = {
@@ -147,6 +150,60 @@ export class AvatarMemorySystem implements MemorySystem {
         listeners.splice(index, 1);
       }
     }
+  }
+
+  // Service interface methods
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    try {
+      // Initialize memory systems
+      this.shortTermMemory.clear();
+      this.longTermMemory.clear();
+      this.workingMemory.clear();
+      
+      this.isInitialized = true;
+      this.isHealthy = true;
+    } catch (error) {
+      this.isHealthy = false;
+      throw new Error(`Failed to initialize AvatarMemorySystem: ${error}`);
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      // Persist important data before shutdown
+      const stats = this.getMemoryStats();
+      console.log('Memory system shutdown. Final stats:', stats);
+      
+      this.eventListeners.clear();
+      this.isInitialized = false;
+    } catch (error) {
+      console.error('Error during AvatarMemorySystem shutdown:', error);
+    }
+  }
+
+  async healthCheck(): Promise<ServiceHealth> {
+    const stats = this.getMemoryStats();
+    const memoryUtilization = stats.totalMemoryUsage;
+    
+    // Check for memory leaks or excessive usage
+    const status = memoryUtilization > 0.9 ? 'unhealthy' : 
+                  memoryUtilization > 0.7 ? 'degraded' : 'healthy';
+
+    return {
+      status,
+      details: {
+        initialized: this.isInitialized,
+        memoryUtilization,
+        shortTermCount: stats.shortTerm.messageCount,
+        longTermCount: stats.longTerm.interactionCount,
+        workingProcesses: stats.working.activeProcessCount,
+        memoryLimits: this.memoryLimits
+      }
+    };
   }
 
   // Private methods

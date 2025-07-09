@@ -16,6 +16,7 @@ import type {
   EnvironmentData
 } from '../types/context';
 import type { ChatMessage } from '../types/common';
+import type { IContextManager, ServiceHealth } from '../interfaces/ServiceInterfaces';
 
 import { LRUContextCache, CacheKeyGenerator, createContextCache } from './contextCache';
 import { AvatarMemorySystem, createMemorySystem } from './memorySystem';
@@ -30,7 +31,7 @@ import { AVATAR_PERSONALITY_CONFIG } from '../config/avatarPersonality';
  * Main Context Manager
  * Orchestrates all context management systems for intelligent conversation
  */
-export class ContextManager {
+export class ContextManager implements IContextManager {
   private cache: LRUContextCache;
   private memory: AvatarMemorySystem;
   private emotionalIntelligence: EmotionalIntelligence;
@@ -40,6 +41,8 @@ export class ContextManager {
   private config: ContextManagerConfig;
   private currentSessionId: string;
   private eventListeners = new Map<ContextEventType, Array<(event: ContextEvent) => void>>();
+  private isInitialized = false;
+  private isHealthy = true;
 
   constructor(config?: Partial<ContextManagerConfig>) {
     this.config = this.createDefaultConfig(config);
@@ -55,8 +58,81 @@ export class ContextManager {
     this.setupEventForwarding();
   }
 
+  // Service interface methods
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    try {
+      // Initialize all sub-services
+      await Promise.all([
+        this.memory.initialize?.(),
+        this.emotionalIntelligence.initialize?.(),
+        this.contextCompressor.initialize?.(),
+        this.feedbackCollector.initialize?.(),
+        this.contextValidator.initialize?.()
+      ].filter(Boolean));
+
+      this.isInitialized = true;
+      this.isHealthy = true;
+    } catch (error) {
+      this.isHealthy = false;
+      throw new Error(`Failed to initialize ContextManager: ${error}`);
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      // Shutdown all sub-services
+      await Promise.all([
+        this.memory.shutdown?.(),
+        this.emotionalIntelligence.shutdown?.(),
+        this.contextCompressor.shutdown?.(),
+        this.feedbackCollector.shutdown?.(),
+        this.contextValidator.shutdown?.()
+      ].filter(Boolean));
+
+      this.eventListeners.clear();
+      this.isInitialized = false;
+    } catch (error) {
+      console.error('Error during ContextManager shutdown:', error);
+    }
+  }
+
+  async healthCheck(): Promise<ServiceHealth> {
+    const subServiceHealths = await Promise.all([
+      this.memory.healthCheck?.() || { status: 'healthy', details: {} },
+      this.emotionalIntelligence.healthCheck?.() || { status: 'healthy', details: {} },
+      this.contextCompressor.healthCheck?.() || { status: 'healthy', details: {} },
+      this.feedbackCollector.healthCheck?.() || { status: 'healthy', details: {} },
+      this.contextValidator.healthCheck?.() || { status: 'healthy', details: {} }
+    ]);
+
+    const unhealthyServices = subServiceHealths.filter(h => h.status !== 'healthy');
+    const status = unhealthyServices.length === 0 ? 'healthy' : 
+                  unhealthyServices.length < subServiceHealths.length ? 'degraded' : 'unhealthy';
+
+    return {
+      status,
+      details: {
+        initialized: this.isInitialized,
+        sessionId: this.currentSessionId,
+        cacheStats: this.cache.getStats(),
+        memoryStats: this.memory.getMemoryStats(),
+        subServices: {
+          memory: subServiceHealths[0],
+          emotionalIntelligence: subServiceHealths[1],
+          contextCompressor: subServiceHealths[2],
+          feedbackCollector: subServiceHealths[3],
+          contextValidator: subServiceHealths[4]
+        }
+      }
+    };
+  }
+
   /**
-   * Create or update context based on new message
+   * Process message to build context
    */
   async processMessage(message: ChatMessage): Promise<Context> {
     try {

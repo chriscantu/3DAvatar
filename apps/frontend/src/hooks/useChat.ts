@@ -136,7 +136,7 @@ export const useChat = (): UseChatReturn => {
 
     try {
       // Add user message
-      const userMessageId = addMessage({
+      addMessage({
         content: trimmedContent,
         sender: 'user'
       });

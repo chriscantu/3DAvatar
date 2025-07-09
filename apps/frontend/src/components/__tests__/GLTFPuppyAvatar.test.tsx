@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import GLTFPuppyAvatar from '../GLTFPuppyAvatar';
 import { AVATAR_ANIMATION } from '../../config/breathingAnimationConstants';
@@ -175,8 +176,8 @@ describe('GLTFPuppyAvatar Scale Configuration', () => {
   describe('Error Handling with Scale', () => {
     it('should handle GLTF loading errors gracefully', () => {
       // Mock a failed GLTF load
-      const { useGLTF } = require('@react-three/drei');
-      useGLTF.mockImplementation(() => {
+      const mockUseGLTF = vi.mocked(useGLTF);
+      mockUseGLTF.mockImplementation(() => {
         throw new Error('Failed to load GLTF');
       });
 

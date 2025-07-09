@@ -88,19 +88,21 @@ export const useVoiceService = () => {
       setIsListening(false);
     };
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = '';
+    // Handle speech recognition results
+    recognition.onresult = (event) => {
       let finalTranscript = '';
-
+      
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
+        
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
         } else {
-          interimTranscript += transcript;
+          // Handle interim results if needed in the future
+          // const interimTranscript = transcript;
         }
       }
-
+      
       if (finalTranscript) {
         setTranscript(finalTranscript);
       }

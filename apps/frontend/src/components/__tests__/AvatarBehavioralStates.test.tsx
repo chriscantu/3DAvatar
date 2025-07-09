@@ -89,6 +89,10 @@ describe('Avatar Behavioral States - User Interaction Response', () => {
       // Capture active state
       const activeState = await qaValidator.analyzeBehavioralState(mockCanvas, 'speaking', 1000);
       
+      // Verify the active state is speaking
+      expect(activeState.state).toBe('speaking');
+      expect(activeState.energyLevel).toBeGreaterThan(0.5);
+      
       // End interaction
       rerender(
         <Canvas>

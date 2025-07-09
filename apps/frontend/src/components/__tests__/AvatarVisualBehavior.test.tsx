@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { Canvas } from '@react-three/fiber';
 import React from 'react';
 import Avatar from '../Avatar';
