@@ -134,15 +134,16 @@ export const LIGHTING_CONFIG = {
 export const AVATAR_CONFIG = {
   POSITION: [0, 0.17, 0] as [number, number, number],
   MOVEMENT_INTENSITY: "animated" as const,
+  SCALE: 0.3, // Avatar scale relative to room (reduced by 40% from original 0.5)
 } as const;
 
 // Camera Configuration
 export const CAMERA_CONFIG = {
-  POSITION: [2, 2.5, 2] as [number, number, number],
-  FOV: 60,
-  TARGET: [0, 1, 0] as [number, number, number],
-  MIN_DISTANCE: 3,
-  MAX_DISTANCE: 8,
+  POSITION: [0, 0.45, 1.8] as [number, number, number], // Front-facing position at avatar eye level
+  FOV: 65, // Slightly wider FOV for better room context
+  TARGET: [0, 0.4, 0] as [number, number, number], // Target avatar body/head area
+  MIN_DISTANCE: 1.2, // Allow getting closer to avatar
+  MAX_DISTANCE: 5, // Reduced max distance for more intimate viewing
   MAX_POLAR_ANGLE: Math.PI / 2.1,
 } as const;
 

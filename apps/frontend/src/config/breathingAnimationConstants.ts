@@ -105,7 +105,7 @@ export const AVATAR_ANIMATION = {
     BODY_BASE_Y: 0.8,             // Base Y scale for body
     BODY_BASE_Z: 2.2,             // Base Z scale for body
     CHEST_BASE: 1.0,              // Base scale for chest
-    GLTF_BASE_SCALE: 0.5,         // Base scale for GLTF models
+    GLTF_BASE_SCALE: 0.3,         // Base scale for GLTF models (reduced by 40% from 0.5)
     GLTF_BREATHING_X_FACTOR: 0.06, // GLTF X-axis breathing factor
     GLTF_BREATHING_Z_FACTOR: 0.04  // GLTF Z-axis breathing factor
   }
