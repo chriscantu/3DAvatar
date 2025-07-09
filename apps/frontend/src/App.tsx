@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import ThreeDRoom from './components/ThreeDRoom';
-import ChatInterface from './components/ChatInterface';
-import ErrorBoundary from './components/ErrorBoundary';
-import Settings from './components/Settings';
+import { ChatInterface } from './components/ChatInterface';
+import { ThreeDRoom } from './components/ThreeDRoom';
+import { Settings } from './components/Settings';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { useChat } from './hooks/useChat';
 import type { UserSettings } from './types/common';
 import './App.css';
 
 const App: React.FC = () => {
-  const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [userIsTyping, setUserIsTyping] = useState(false);
@@ -17,6 +17,9 @@ const App: React.FC = () => {
   
   // Use ref to track the interval for time calculation
   const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get chat state including TTS speaking state
+  const { isSpeaking: isAvatarSpeaking } = useChat();
 
   // Update time since last message every 100ms for smooth avatar transitions
   useEffect(() => {
@@ -69,14 +72,8 @@ const App: React.FC = () => {
     setTimeSinceLastMessage(0);
     setUserIsTyping(false);
     
-    // This will trigger avatar speaking animation
-    setIsAvatarSpeaking(true);
-    
-    // Simulate avatar speaking duration based on message length
-    const speakingDuration = Math.max(2000, Math.min(8000, message.length * 50));
-    setTimeout(() => {
-      setIsAvatarSpeaking(false);
-    }, speakingDuration);
+    // Note: isAvatarSpeaking is now controlled by the TTS service in useChat
+    // No need to manually set speaking state here
   }, []);
 
   const handleUserTyping = useCallback((isTyping: boolean) => {
