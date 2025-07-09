@@ -1,39 +1,45 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-// Speech Recognition interfaces
-interface SpeechRecognitionResult {
-  [index: number]: {
-    transcript: string;
-    confidence: number;
-  };
-  isFinal: boolean;
-}
-
-interface SpeechRecognitionResults {
-  [index: number]: SpeechRecognitionResult;
-  length: number;
-}
-
+// Types for speech recognition
 interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResults;
+  results: SpeechRecognitionResultList;
   resultIndex: number;
 }
 
 interface SpeechRecognitionErrorEvent {
   error: string;
+  message: string;
 }
 
 interface SpeechRecognitionInterface {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onend: (() => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  start(): void;
-  stop(): void;
-  abort(): void;
+  onstart: () => void;
+  onend: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item: (index: number) => SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item: (index: number) => SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
 }
 
 // Extend Window interface for webkitSpeechRecognition
@@ -69,7 +75,7 @@ export const useVoiceService = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
@@ -78,9 +84,13 @@ export const useVoiceService = () => {
       setError(null);
     };
 
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
       let interimTranscript = '';
+      let finalTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
@@ -91,35 +101,14 @@ export const useVoiceService = () => {
         }
       }
 
-      setTranscript(finalTranscript || interimTranscript);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
+      if (finalTranscript) {
+        setTranscript(finalTranscript);
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      setError(`Speech recognition error: ${event.error}`);
       setIsListening(false);
-      let errorMessage = 'Speech recognition error';
-      
-      switch (event.error) {
-        case 'network':
-          errorMessage = 'Network error during speech recognition';
-          break;
-        case 'not-allowed':
-          errorMessage = 'Microphone access denied';
-          break;
-        case 'no-speech':
-          errorMessage = 'No speech detected';
-          break;
-        case 'aborted':
-          errorMessage = 'Speech recognition aborted';
-          break;
-        default:
-          errorMessage = `Speech recognition error: ${event.error}`;
-      }
-      
-      setError(errorMessage);
     };
 
     return recognition;
@@ -207,38 +196,4 @@ export const useVoiceService = () => {
     clearTranscript,
     clearError,
   };
-};
-
-// Legacy service object for backward compatibility
-export const voiceService = {
-  isSupported: typeof window !== 'undefined' && 
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window),
-  
-  speak: async (text: string): Promise<void> => {
-    if (!('speechSynthesis' in window)) {
-      throw new Error('Speech synthesis not supported');
-    }
-
-    return new Promise((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      
-      utterance.onend = () => resolve();
-      utterance.onerror = (error) => reject(error);
-      
-      speechSynthesis.speak(utterance);
-    });
-  },
-
-  startListening: () => {
-    console.warn('voiceService.startListening is deprecated. Use useVoiceService hook instead.');
-  },
-
-  stopListening: () => {
-    console.warn('voiceService.stopListening is deprecated. Use useVoiceService hook instead.');
-  }
-};
-
-export default { useVoiceService, voiceService }; 
+}; 
