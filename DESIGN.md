@@ -1122,4 +1122,4 @@ const designTokens: DesignTokens = {
 
 ---
 
-*This design guide should be used in conjunction with the technical implementation outlined in `implementation.md` and the context engineering practices in `claude.md`.* 
+*This design guide should be used in conjunction with the technical implementation outlined in `implementation.md` and the context engineering practices in `IMPLEMENTATION.md`.* 

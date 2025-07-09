@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides comprehensive engineering implementation guidelines for the 3D Avatar project, focusing on code quality, architecture patterns, performance optimization, and maintainability. It serves as a companion to the context engineering practices outlined in `claude.md`.
+This document provides comprehensive engineering implementation guidelines for the 3D Avatar project, focusing on code quality, architecture patterns, performance optimization, and maintainability. It serves as a companion to the context engineering practices outlined in `IMPLEMENTATION.md`.
 
 ## Table of Contents
 
@@ -1052,4 +1052,4 @@ class Logger {
 
 ---
 
-*This implementation guide should be used in conjunction with the context engineering practices outlined in `claude.md` and the design principles in `design.md`.* 
+*This implementation guide should be used in conjunction with the context engineering practices outlined in `IMPLEMENTATION.md` and the design principles in `design.md`.* 
