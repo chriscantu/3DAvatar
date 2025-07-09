@@ -186,7 +186,6 @@ export const TEST_ENVIRONMENT = {
   ],
   
   testMatch: [
-    '**/__tests__/**/*.{js,jsx,ts,tsx}',
     '**/*.(test|spec).{js,jsx,ts,tsx}'
   ],
   
