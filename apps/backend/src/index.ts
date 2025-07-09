@@ -68,7 +68,7 @@ app.post('/api/chat', async (req: Request, res: Response): Promise<void> => {
     const response = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     res.json({
-      message: response,
+      response: response,
       timestamp: new Date().toISOString()
     });
 
