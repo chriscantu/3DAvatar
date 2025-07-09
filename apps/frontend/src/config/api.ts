@@ -60,9 +60,8 @@ export interface ChatMessage {
 }
 
 export interface ChatResponse {
-  message: string;
-  timestamp: number;
-  messageId: string;
+  response: string;
+  timestamp: string;
 }
 
 /**
