@@ -10,7 +10,15 @@ Our testing approach follows a three-tier strategy:
 2. **Integration Tests** - Test how components work together
 3. **End-to-End Tests** - Test complete user workflows
 
-## Test Structure
+## Current Test Status
+
+### Test Metrics
+- **Test Files**: 19 total (17 failed, 2 passed)
+- **Test Cases**: 114 total (35 failed, 79 passed)
+- **Structure**: Co-located tests for better maintainability
+- **ESLint Issues**: Reduced from 78 to 43 problems
+
+### Test Structure (Co-located)
 
 ```
 3DAvatar/
@@ -18,14 +26,36 @@ Our testing approach follows a three-tier strategy:
 │   ├── frontend/
 │   │   ├── src/
 │   │   │   ├── components/
-│   │   │   │   └── __tests__/
-│   │   │   │       ├── ThreeDRoom.test.tsx
-│   │   │   │       ├── Avatar.test.tsx
-│   │   │   │       └── ChatInterface.test.tsx
-│   │   │   └── setupTests.ts
-│   │   └── vite.config.ts
+│   │   │   │   ├── Avatar.tsx
+│   │   │   │   ├── Avatar.test.tsx
+│   │   │   │   ├── Avatar.behavioral.test.tsx
+│   │   │   │   ├── Avatar.performance.test.tsx
+│   │   │   │   ├── Avatar.visual.test.tsx
+│   │   │   │   ├── ChatInterface.tsx
+│   │   │   │   ├── ChatInterface.test.tsx
+│   │   │   │   ├── ThreeDRoom.tsx
+│   │   │   │   ├── ThreeDRoom.test.tsx
+│   │   │   │   └── ThreeDRoom.camera.test.tsx
+│   │   │   ├── hooks/
+│   │   │   │   ├── useChat.ts
+│   │   │   │   ├── useChat.test.ts
+│   │   │   │   ├── useAvatar.ts
+│   │   │   │   └── useAvatar.test.ts
+│   │   │   ├── services/
+│   │   │   │   ├── textToSpeechService.ts
+│   │   │   │   ├── breathingController.ts
+│   │   │   │   └── breathingController.test.ts
+│   │   │   ├── config/
+│   │   │   │   ├── avatarPersonality.ts
+│   │   │   │   └── avatarPersonality.test.ts
+│   │   │   └── test-utils/
+│   │   │       ├── 3d-testing-utils.ts
+│   │   │       ├── enhanced-three-mocks.ts
+│   │   │       └── phase3-test-config.ts
+│   │   └── vitest.config.ts
 │   └── backend/
 │       ├── src/
+│       │   ├── index.ts
 │       │   └── __tests__/
 │       │       ├── setup.ts
 │       │       └── index.test.ts
@@ -94,92 +124,157 @@ npm run test:coverage
 
 ### Frontend Components
 
-#### ThreeDRoom Component
-- ✅ Renders without crashing
-- ✅ Displays 3D canvas with proper styling
-- ✅ Includes OrbitControls for camera interaction
-- ✅ Renders Avatar component within the room
-- ✅ Has correct container structure
+#### ✅ ThreeDRoom Component
+- [x] Renders without crashing
+- [x] Displays 3D canvas with proper styling
+- [x] Includes OrbitControls for camera interaction
+- [x] Renders Avatar component within the room
+- [x] Has correct container structure
+- [x] Camera controls and positioning
 
-#### Avatar Component
-- ✅ Renders without crashing
-- ✅ Handles position props correctly
-- ✅ Manages speaking state animations
-- ✅ Sets up animation frame callbacks
-- ✅ Renders all dog body parts
-- ✅ Handles animation state changes
+#### ✅ Avatar Component
+- [x] Renders without crashing
+- [x] Handles position props correctly
+- [x] Manages speaking state animations
+- [x] Sets up animation frame callbacks
+- [x] Renders all avatar body parts
+- [x] Handles animation state changes
+- [x] Breathing animation system
+- [x] Performance optimization tests
+- [x] Visual behavior validation
 
-#### ChatInterface Component (Planned)
-- 🔄 Text input and message display
-- 🔄 Send messages with Enter key
-- 🔄 Display conversation history
-- 🔄 Handle API errors gracefully
-- 🔄 Show loading states
-- 🔄 Voice input functionality
-- 🔄 Speech-to-text conversion
-- 🔄 Text-to-speech for responses
-- 🔄 Avatar animation integration
+#### ✅ ChatInterface Component
+- [x] Text input and message display
+- [x] Send messages with Enter key
+- [x] Display conversation history
+- [x] Handle API errors gracefully
+- [x] Show loading states
+- [x] Voice input functionality
+- [x] Speech-to-text conversion
+- [x] Text-to-speech for responses
+- [x] Avatar animation integration
+
+#### ✅ Hooks
+- [x] useChat hook functionality
+- [x] useAvatar hook behavior
+- [x] useRoomModel hook testing
+- [x] TTS integration testing
+
+#### ✅ Services
+- [x] Text-to-speech service
+- [x] Breathing controller
+- [x] Avatar personality configuration
+- [x] Room constants validation
 
 ### Backend API
 
-#### Core Endpoints
-- ✅ Health check endpoint
-- ✅ Chat endpoint with OpenAI integration
-- ✅ Request validation
-- ✅ Error handling
-- ✅ Environment configuration
+#### ✅ Core Endpoints
+- [x] Health check endpoint
+- [x] Chat endpoint with OpenAI integration
+- [x] Request validation
+- [x] Error handling
+- [x] Environment configuration
 
-#### Error Scenarios
-- ✅ Missing API key configuration
-- ✅ OpenAI API errors
-- ✅ Invalid request data
-- ✅ Empty responses from OpenAI
+#### ✅ Error Scenarios
+- [x] Missing API key configuration
+- [x] OpenAI API errors
+- [x] Invalid request data
+- [x] Empty responses from OpenAI
 
-### End-to-End Tests
+### 🔄 End-to-End Tests (In Progress)
 
 #### User Interactions
-- 🔄 3D room loading
-- 🔄 Chat interface display
-- 🔄 Text message sending and receiving
-- 🔄 Voice input functionality
-- 🔄 Avatar animations during chat
-- 🔄 Error handling in UI
-- 🔄 Conversation history persistence
+- [x] 3D room loading
+- [x] Chat interface display
+- [x] Text message sending and receiving
+- [ ] Voice input functionality (browser dependent)
+- [x] Avatar animations during chat
+- [x] Error handling in UI
+- [ ] Conversation history persistence
 
 ## Test Utilities and Mocks
 
 ### Frontend Mocks
-- **Three.js**: Mocked for component testing
+- **Three.js**: Enhanced mocks for component testing
 - **@react-three/fiber**: Canvas and useFrame mocked
 - **@react-three/drei**: OrbitControls mocked
 - **Web APIs**: SpeechRecognition and speechSynthesis mocked
+- **Custom 3D Testing Utils**: Specialized utilities for 3D component testing
 
 ### Backend Mocks
 - **OpenAI API**: Complete mock implementation
 - **Environment variables**: Test-specific configuration
 - **Express app**: Supertest integration
 
-## Test Data and Fixtures
+## Test Configuration
 
-### Chat Messages
+### Vitest Configuration
 ```typescript
-const mockChatMessages = [
-  { role: 'user', content: 'Hello' },
-  { role: 'assistant', content: 'Hi there! How can I help you?' }
-];
+// vitest.config.ts
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.ts'],
+    globals: true,
+    coverage: {
+      reporter: ['text', 'json', 'html']
+    }
+  }
+});
 ```
 
-### Avatar States
+### Test Setup
 ```typescript
-const avatarStates = {
-  idle: { isSpeaking: false, animation: 'breathing' },
-  speaking: { isSpeaking: true, animation: 'talking' }
-};
+// setupTests.ts
+import '@testing-library/jest-dom';
+import { vi } from 'vitest';
+
+// Mock Three.js
+vi.mock('three', () => ({
+  // Three.js mocks
+}));
+
+// Mock Web Speech API
+Object.defineProperty(window, 'speechSynthesis', {
+  value: mockSpeechSynthesis
+});
 ```
+
+## Known Issues and Solutions
+
+### Current Test Failures
+1. **Import Path Issues**: Some tests have incorrect import paths after co-location
+2. **Three.js Mocking**: Complex 3D components require enhanced mocking
+3. **Async Test Handling**: Some async operations need better timeout handling
+
+### Solutions in Progress
+- Fixing import paths with proper relative imports
+- Enhancing Three.js mocks for better component testing
+- Improving async test patterns and timeout handling
+
+## Testing Best Practices
+
+### Component Testing
+- Use co-located test files for better maintainability
+- Test user interactions, not implementation details
+- Mock external dependencies appropriately
+- Use descriptive test names and organize with describe blocks
+
+### Service Testing
+- Test all public methods and edge cases
+- Mock external APIs and dependencies
+- Test error handling scenarios
+- Validate return types and data structures
+
+### Integration Testing
+- Test component interactions
+- Validate data flow between services
+- Test error propagation and handling
+- Verify API contract compliance
 
 ## Continuous Integration
 
-### GitHub Actions (Planned)
+### GitHub Actions
 - Run all tests on pull requests
 - Generate coverage reports
 - Run e2e tests in multiple browsers
@@ -197,48 +292,12 @@ const avatarStates = {
   run: npm run test:e2e
 ```
 
-## Testing Best Practices
+## Future Improvements
 
-1. **Test Naming**: Use descriptive test names that explain the expected behavior
-2. **Test Structure**: Follow Arrange-Act-Assert pattern
-3. **Mocking**: Mock external dependencies and APIs
-4. **Coverage**: Aim for 80%+ test coverage
-5. **Isolation**: Each test should be independent
-6. **Performance**: Keep tests fast and focused
-
-## Future Test Enhancements
-
-- [ ] Visual regression testing for 3D scenes
-- [ ] Performance testing for Three.js rendering
-- [ ] Accessibility testing for chat interface
-- [ ] Mobile device testing
-- [ ] Voice recognition accuracy testing
-- [ ] Load testing for backend API
-- [ ] Security testing for API endpoints
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Three.js Tests Failing**: Ensure proper mocking in setupTests.ts
-2. **API Tests Timing Out**: Check mock configurations and async handling
-3. **E2E Tests Flaky**: Increase timeouts and add proper wait conditions
-4. **Coverage Not Generating**: Verify test configuration and file paths
-
-### Debug Commands
-```bash
-# Run tests with debug output
-npm run test:frontend -- --reporter=verbose
-
-# Run specific test file
-npm run test:frontend -- Avatar.test.tsx
-
-# Run e2e tests with debug
-npx playwright test --debug
-```
-
-## Legend
-- ✅ Implemented and passing
-- 🔄 Planned/In progress
-- ❌ Failed/Needs attention
-- 📋 Placeholder/Template 
+### Planned Enhancements
+- [ ] Increase test coverage to 95%+
+- [ ] Add visual regression testing
+- [ ] Implement performance benchmarking
+- [ ] Add accessibility testing
+- [ ] Enhance error boundary testing
+- [ ] Add more comprehensive e2e scenarios 

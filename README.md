@@ -9,6 +9,8 @@ A 3D virtual room with an AI-powered avatar that you can chat with using text or
 - **Dual Chat Interface**: Text and voice chat capabilities
 - **Real-time Interaction**: Avatar responds with text-to-speech
 - **Secure Backend**: Node.js/Express API proxy for OpenAI requests
+- **Child Voice**: Configured with child-like voice characteristics
+- **Co-located Tests**: Modern test structure for better maintainability
 
 ## 🏗️ Architecture
 
@@ -24,22 +26,24 @@ A 3D virtual room with an AI-powered avatar that you can chat with using text or
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React** - UI framework
+- **React 18** - UI framework with TypeScript
 - **Three.js** - 3D graphics library
 - **Vite** - Build tool and dev server
-- **Speech Recognition** - Voice input
-- **Speech Synthesis** - Text-to-speech
+- **Web Speech API** - Voice input and text-to-speech
+- **Vitest** - Testing framework
 
 ### Backend
 - **Node.js** - Runtime environment
 - **Express** - Web framework
 - **OpenAI SDK** - AI integration
 - **CORS** - Cross-origin resource sharing
+- **Dotenv** - Environment configuration
 
 ### Testing
-- **Jest** - Unit testing
+- **Vitest** - Unit testing framework
 - **React Testing Library** - Component testing
 - **Playwright** - End-to-end testing
+- **Co-located Tests** - Tests alongside source files
 
 ## 📋 Prerequisites
 
@@ -51,18 +55,13 @@ A 3D virtual room with an AI-powered avatar that you can chat with using text or
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/3DAvatar.git
+git clone https://github.com/chriscantu/3DAvatar.git
 cd 3DAvatar
 ```
 
 ### 2. Install dependencies
 ```bash
-# Install frontend dependencies
-cd apps/frontend
-npm install
-
-# Install backend dependencies
-cd ../backend
+# Install all dependencies from root
 npm install
 ```
 
@@ -74,39 +73,37 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ### 4. Start development servers
 ```bash
-# Start backend (from apps/backend)
+# Start both frontend and backend concurrently
 npm run dev
 
-# Start frontend (from apps/frontend)
-npm run dev
+# Frontend: http://localhost:5173
+# Backend: http://localhost:3001
 ```
 
 ## 🧪 Testing
 
-### Avatar Testing Framework
-The project uses a declarative testing approach focused on observable behavior:
+### Current Test Status
+- **Test Files**: 19 total (17 failed, 2 passed)
+- **Test Cases**: 114 total (35 failed, 79 passed)
+- **Structure**: Co-located tests for better maintainability
+- **ESLint Issues**: Reduced from 78 to 43 problems
 
+### Run Tests
 ```bash
-# Run avatar behavioral tests
-npm run test:avatar:visual      # Visual behavior tests
-npm run test:avatar:performance # Performance behavior tests
-npm run test:avatar:behavioral  # Behavioral state tests
-npm run test:avatar:full        # All avatar tests
-```
-
-**Testing Documentation:**
-- **[Avatar Testing Implementation Plan](./AVATAR_TESTING_IMPLEMENTATION_PLAN.md)** - Testing strategy and approach
-- **[Avatar Testing Usage Guide](./AVATAR_TESTING_USAGE_GUIDE.md)** - Practical testing instructions
-
-### Unit Tests
-```bash
-# Frontend tests
-cd apps/frontend
+# Run all tests
 npm test
 
-# Backend tests
-cd apps/backend
-npm test
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run frontend tests only
+cd apps/frontend && npm test
+
+# Run backend tests only
+cd apps/backend && npm test
 ```
 
 ### End-to-End Tests
@@ -117,39 +114,60 @@ npm run test:e2e
 
 ## 🚀 Deployment
 
-### Vercel Deployment
+### Vercel Deployment (Configured)
+The project is configured for Vercel deployment with:
+- Automatic frontend/backend builds
+- Environment variable configuration
+- Static file serving
+- API route handling
+
 1. Connect your GitHub repository to Vercel
-2. Configure environment variables in Vercel dashboard
-3. Deploy both frontend and backend
+2. Configure environment variables in Vercel dashboard:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+3. Deploy automatically on push to main branch
 
 ## 📚 Documentation
 
 ### Core Documentation
 - **[Architecture Guide](./ARCHITECTURE.md)** - System architecture and technical design
 - **[Design Guidelines](./DESIGN.md)** - UI/UX design principles and patterns
-- **[Implementation Guide](./IMPLEMENTATION.md)** - Development best practices and standards
+- **[Implementation Guide](./IMPLEMENTATION.md)** - Development best practices and current status
 - **[Testing Strategy](./TESTING.md)** - Testing approach and guidelines
 - **[Deployment Guide](./DEPLOYMENT.md)** - Deployment instructions and configuration
+- **[Phase 3 Plan](./PHASE3_IMPLEMENTATION_PLAN.md)** - Code quality and maintainability improvements
 
-### Phase 2 Services
-Advanced AI services for enhanced user experience:
-- **[Phase 2 Quick Reference](./docs/PHASE2_QUICK_REFERENCE.md)** - Essential commands and configurations
+### Current Implementation Status
 
-**Phase 2 Services:**
-- 🧠 **Emotional Intelligence** - Emotion detection and empathetic responses
-- 🗜️ **Context Compression** - Intelligent conversation summarization
-- 📊 **Feedback Collection** - Analytics and improvement recommendations
-- ✅ **Context Validation** - Data integrity and health monitoring
+#### ✅ Completed Features
+- **Monorepo Structure**: Clean separation between frontend and backend
+- **3D Avatar Visualization**: Three.js-based avatar with breathing animations
+- **Chat Interface**: Real-time chat with AI responses
+- **Text-to-Speech Integration**: Child voice characteristics with Web Speech API
+- **API Communication**: Working backend API with proper error handling
+- **Test Infrastructure**: Co-located test files following modern best practices
+- **Development Environment**: Concurrent frontend/backend development with hot reload
 
-**Status:** Production Ready ✅ (148/151 tests passing - 98% coverage)
+#### 🔄 In Progress
+- **Test Reliability**: Fixing remaining test failures and import issues
+- **Performance Optimization**: 3D rendering and component optimization
+- **Security Measures**: Rate limiting and input validation
+- **Monitoring**: Comprehensive error tracking and metrics
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests
-5. Submit a pull request
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Write tests for new features
+- Use co-located test structure
+- Follow existing code patterns
+- Update documentation as needed
 
 ## 📄 License
 
@@ -159,4 +177,5 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 - Three.js community for 3D graphics
 - OpenAI for AI capabilities
-- React team for the amazing framework 
+- React team for the amazing framework
+- Vite for fast development experience 
