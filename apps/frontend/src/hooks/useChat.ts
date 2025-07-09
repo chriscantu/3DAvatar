@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService, ApiError, NetworkError, TimeoutError } from '../config/api';
 import { createContextManager } from '../services/contextManager';
+import { useTextToSpeech, CHILD_VOICE_CONFIG } from '../services/textToSpeechService';
 import type { Context, ContextAnalysis } from '../types/context';
-import type { ChatMessage } from '../types/common';
+import type { ChatMessage } from '../config/api';
+import type { VoiceConfig } from '../services/textToSpeechService';
 
 interface Message {
   id: string;
@@ -23,6 +25,12 @@ interface UseChatReturn {
   clearError: () => void;
   currentContext: Context | null;
   contextAnalysis: ContextAnalysis | null;
+  // TTS-related properties
+  isSpeaking: boolean;
+  stopSpeaking: () => void;
+  ttsConfig: VoiceConfig;
+  updateTTSConfig: (config: Partial<VoiceConfig>) => void;
+  isTTSSupported: boolean;
 }
 
 const STORAGE_KEY = '3davatar_chat_history';
@@ -39,6 +47,17 @@ export const useChat = (): UseChatReturn => {
   const [contextAnalysis, setContextAnalysis] = useState<ContextAnalysis | null>(null);
   
   const contextManagerRef = useRef(createContextManager());
+
+  // Initialize text-to-speech with child voice
+  const {
+    speak,
+    stop: stopSpeaking,
+    isSpeaking: isTTSSpeaking,
+    isSupported: isTTSSupported,
+    error: ttsError,
+    currentConfig: ttsConfig,
+    updateConfig: updateTTSConfig
+  } = useTextToSpeech(CHILD_VOICE_CONFIG);
 
   // Load chat history from localStorage on mount
   useEffect(() => {
@@ -70,7 +89,7 @@ export const useChat = (): UseChatReturn => {
     }
   }, [messages]);
 
-  // Process messages through context system
+  // Process messages through context system and handle TTS
   useEffect(() => {
     const processLatestMessage = async () => {
       if (messages.length === 0) return;
@@ -102,6 +121,17 @@ export const useChat = (): UseChatReturn => {
           topics: context.immediate.activeTopics,
           relevance: analysis.relevanceScore
         });
+
+        // If this is an assistant message, speak it with child voice
+        if (lastMessage.sender === 'assistant' && lastMessage.content && !lastMessage.isTyping) {
+          try {
+            await speak(lastMessage.content);
+            console.log('Assistant response spoken with child voice');
+          } catch (speechError) {
+            console.warn('Failed to speak assistant response:', speechError);
+            // Don't set error state for TTS failures - it's not critical
+          }
+        }
       } catch (error) {
         console.error('Context processing error:', error);
         // Don't set error state for context processing failures
@@ -109,7 +139,7 @@ export const useChat = (): UseChatReturn => {
     };
 
     processLatestMessage();
-  }, [messages]);
+  }, [messages, speak]);
 
   // Add a new message to the chat
   const addMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>) => {
@@ -127,6 +157,9 @@ export const useChat = (): UseChatReturn => {
   const sendMessage = useCallback(async (content: string) => {
     // Clear any existing errors
     setError(null);
+
+    // Stop any current speech
+    stopSpeaking();
 
     // Validate input
     const trimmedContent = content.trim();
@@ -158,7 +191,7 @@ export const useChat = (): UseChatReturn => {
         // Remove typing message
         setMessages(prev => prev.filter(msg => msg.id !== typingMessageId));
         
-        // Add assistant response
+        // Add assistant response (TTS will be handled by the effect above)
         addMessage({
           content: response.response || 'I received your message but had trouble responding.',
           sender: 'assistant'
@@ -189,10 +222,11 @@ export const useChat = (): UseChatReturn => {
     } finally {
       setIsTyping(false);
     }
-  }, [addMessage]);
+  }, [addMessage, stopSpeaking]);
 
-  // Clear chat history
+  // Clear chat history and stop any speech
   const clearHistory = useCallback(() => {
+    stopSpeaking();
     setMessages([]);
     setCurrentContext(null);
     setContextAnalysis(null);
@@ -204,7 +238,7 @@ export const useChat = (): UseChatReturn => {
     } catch (error) {
       console.warn('Failed to clear chat history:', error);
     }
-  }, []);
+  }, [stopSpeaking]);
 
   // Export chat history as JSON file
   const exportHistory = useCallback(() => {
@@ -239,15 +273,22 @@ export const useChat = (): UseChatReturn => {
     setError(null);
   }, []);
 
+  // Enhanced return object with TTS information
   return {
     messages,
     isTyping,
-    error,
+    error: error || ttsError, // Include TTS errors in the error state
     sendMessage,
     clearHistory,
     exportHistory,
     clearError,
     currentContext,
-    contextAnalysis
+    contextAnalysis,
+    // TTS-related properties
+    isSpeaking: isTTSSpeaking,
+    stopSpeaking,
+    ttsConfig,
+    updateTTSConfig,
+    isTTSSupported
   };
 }; 
