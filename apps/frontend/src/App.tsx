@@ -170,6 +170,8 @@ const App: React.FC = () => {
                 userIsTyping={userIsTyping}
                 lastMessageLength={lastMessageLength}
                 timeSinceLastMessage={timeSinceLastMessage}
+                useRoomModels={true}
+                roomModelUrl="/models/room/bedroom-complete.glb"
               />
             </ErrorBoundary>
           </div>
