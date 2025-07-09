@@ -396,6 +396,10 @@ describe('Avatar Behavioral States - User Interaction Response', () => {
 
       const initialEmotion = await qaValidator.analyzeBehavioralState(mockCanvas, 'curious', 1000);
       
+      // Verify initial emotional state
+      expect(initialEmotion.curiosity).toBeGreaterThan(0.5);
+      expect(initialEmotion.state).toBe('curious');
+      
       // Transition to enthusiastic response
       rerender(
         <Canvas>
@@ -418,6 +422,9 @@ describe('Avatar Behavioral States - User Interaction Response', () => {
       expect(emotionalTransition.transitionSmoothness).toBeGreaterThan(0.7);
       expect(emotionalTransition.reachesTargetEmotion).toBe(true);
       expect(emotionalTransition.isAppropriate).toBe(true);
+      
+      // Verify transition from initial state
+      expect(emotionalTransition.fromState).toBe(initialEmotion.state);
     });
   });
 
@@ -435,8 +442,16 @@ describe('Avatar Behavioral States - User Interaction Response', () => {
 
       const stateSignatures = [];
 
+      // Use a single render/rerender for all states
+      const { rerender } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} {...states[0].props} />
+        </Canvas>
+      );
+
       for (const state of states) {
-        const { rerender } = render(
+        // Rerender with new state props
+        rerender(
           <Canvas>
             <Avatar position={[0, 0, 0]} {...state.props} />
           </Canvas>
@@ -473,8 +488,15 @@ describe('Avatar Behavioral States - User Interaction Response', () => {
         { isSpeaking: true, userIsTyping: true, timeSinceLastMessage: 0 } // Simultaneous everything
       ];
 
+      // Use a single render/rerender for all edge cases
+      const { rerender } = render(
+        <Canvas>
+          <Avatar position={[0, 0, 0]} {...edgeCases[0]} />
+        </Canvas>
+      );
+
       for (const edgeCase of edgeCases) {
-        const { rerender } = render(
+        rerender(
           <Canvas>
             <Avatar position={[0, 0, 0]} {...edgeCase} />
           </Canvas>

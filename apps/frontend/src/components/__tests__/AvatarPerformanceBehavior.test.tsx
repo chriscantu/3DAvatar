@@ -91,9 +91,9 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
       }
     });
 
-    it('should handle rapid state changes without performance impact', async () => {
-      // BEHAVIOR: Avatar should remain smooth during quick interaction changes
-      // EXPECTATION: No frame drops or stuttering when states change rapidly
+    it('should handle rapid state changes without performance degradation', async () => {
+      // BEHAVIOR: Avatar should maintain smooth performance during rapid state changes
+      // EXPECTATION: No frame drops or stuttering during quick conversation changes
       
       const { rerender } = render(
         <Canvas>
@@ -101,12 +101,11 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
         </Canvas>
       );
 
-      // Rapidly change states to stress test
       const rapidStates = [
-        { isSpeaking: true, userIsTyping: false },
         { isSpeaking: false, userIsTyping: true },
-        { isSpeaking: true, userIsTyping: true },
-        { isSpeaking: false, userIsTyping: false }
+        { isSpeaking: true, userIsTyping: false },
+        { isSpeaking: false, userIsTyping: false },
+        { isSpeaking: true, userIsTyping: true }
       ];
 
       // Start performance monitoring
@@ -122,11 +121,13 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
+      const totalTime = performance.now() - startTime;
       const stressTestPerformance = await qaValidator.monitorFrameRate(mockCanvas, 1000);
       
       expect(stressTestPerformance.averageFPS).toBeGreaterThan(45);
       expect(stressTestPerformance.frameDropPercentage).toBeLessThan(10);
       expect(stressTestPerformance.hasStuttering).toBe(false);
+      expect(totalTime).toBeLessThan(2000); // Should complete in under 2 seconds
     });
   });
 
@@ -229,11 +230,13 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
         </Canvas>
       );
 
+      const actualResponseTime = performance.now() - startTime;
       const responseAnalysis = await qaValidator.measureResponseTime(mockCanvas, 'typing');
       
       expect(responseAnalysis.responseTimeMs).toBeLessThan(100);
       expect(responseAnalysis.isResponsive).toBe(true);
       expect(responseAnalysis.userPerceivedDelay).toBe('none');
+      expect(actualResponseTime).toBeLessThan(100); // Verify actual timing
     });
 
     it('should transition smoothly to speaking state without delay', async () => {
@@ -254,11 +257,13 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
         </Canvas>
       );
 
+      const actualTransitionTime = performance.now() - startTime;
       const speakingResponse = await qaValidator.measureResponseTime(mockCanvas, 'speaking');
       
       expect(speakingResponse.responseTimeMs).toBeLessThan(50);
       expect(speakingResponse.isResponsive).toBe(true);
       expect(speakingResponse.animationStartDelay).toBeLessThan(100);
+      expect(actualTransitionTime).toBeLessThan(50); // Verify actual timing
     });
 
     it('should handle multiple rapid state changes without accumulating delay', async () => {
@@ -286,8 +291,12 @@ describe('Avatar Performance Behavior - Real-World Metrics', () => {
           </Canvas>
         );
 
+        const actualTime = performance.now() - startTime;
         const responseTime = await qaValidator.measureResponseTime(mockCanvas, 'state_change');
         responseTimes.push(responseTime.responseTimeMs);
+        
+        // Verify actual timing is reasonable
+        expect(actualTime).toBeLessThan(100);
         
         await new Promise(resolve => setTimeout(resolve, 100));
       }

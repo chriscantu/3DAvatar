@@ -35,7 +35,7 @@ describe('Component Contracts', () => {
       
       it('should reject invalid position', () => {
         const invalidContract: Partial<AvatarComponentContract> = {
-          position: [0, 0] as any // Invalid - should be 3 elements
+          position: [0, 0] as [number, number] // Invalid - should be 3 elements
         };
         
         const result = ContractValidator.validateAvatarContract(invalidContract);
@@ -48,7 +48,7 @@ describe('Component Contracts', () => {
       
       it('should reject invalid movement intensity', () => {
         const invalidContract: Partial<AvatarComponentContract> = {
-          movementIntensity: 'invalid' as any
+          movementIntensity: 'invalid' as 'subtle' // Type assertion for invalid value
         };
         
         const result = ContractValidator.validateAvatarContract(invalidContract);
@@ -158,7 +158,7 @@ describe('Component Contracts', () => {
       
       it('should reject invalid camera position', () => {
         const invalidContract: Partial<ThreeDRoomComponentContract> = {
-          cameraPosition: [0, 2] as any // Invalid - should be 3 elements
+          cameraPosition: [0, 2] as [number, number] // Invalid - should be 3 elements
         };
         
         const result = ContractValidator.validateThreeDRoomContract(invalidContract);
@@ -171,7 +171,7 @@ describe('Component Contracts', () => {
       
       it('should reject invalid quality level', () => {
         const invalidContract: Partial<ThreeDRoomComponentContract> = {
-          qualityLevel: 'invalid' as any
+          qualityLevel: 'invalid' as 'low' // Type assertion for invalid value
         };
         
         const result = ContractValidator.validateThreeDRoomContract(invalidContract);
@@ -192,7 +192,7 @@ describe('Component Contracts', () => {
             },
             {
               url: 'https://example.com/table.glb',
-              position: [1, 0] as any, // Invalid position
+              position: [1, 0] as [number, number], // Invalid position
               name: 'table'
             }
           ]
@@ -369,8 +369,8 @@ describe('Component Contracts', () => {
       });
       
       class TestComponent {
-        @enforceContract(Object as any, mockValidator)
-        render(props: any) {
+        @enforceContract(Object as unknown, mockValidator)
+        render(props: Record<string, unknown>) {
           return props;
         }
       }
@@ -394,8 +394,8 @@ describe('Component Contracts', () => {
       });
       
       class TestComponent {
-        @enforceContract(Object as any, mockValidator)
-        render(props: any) {
+        @enforceContract(Object as unknown, mockValidator)
+        render(props: Record<string, unknown>) {
           return props;
         }
       }
@@ -421,8 +421,8 @@ describe('Component Contracts', () => {
       });
       
       class TestComponent {
-        @enforceContract(Object as any, mockValidator)
-        render(props: any) {
+        @enforceContract(Object as unknown, mockValidator)
+        render(props: Record<string, unknown>) {
           return props;
         }
       }
@@ -454,7 +454,7 @@ describe('Component Contracts', () => {
     
     it('should have correct error structure', () => {
       const result = ContractValidator.validateAvatarContract({
-        position: [0, 0] as any // Invalid position
+        position: [0, 0] as [number, number] // Invalid position
       });
       
       expect(result.errors).toHaveLength(1);
@@ -530,10 +530,10 @@ describe('Component Contracts', () => {
   
   describe('Edge Cases', () => {
     it('should handle null and undefined props', () => {
-      expect(() => ContractValidator.validateAvatarContract(null as any)).not.toThrow();
-      expect(() => ContractValidator.validateAvatarContract(undefined as any)).not.toThrow();
-      expect(() => ContractValidator.validateChatInterfaceContract(null as any)).not.toThrow();
-      expect(() => ContractValidator.validateThreeDRoomContract(null as any)).not.toThrow();
+      expect(() => ContractValidator.validateAvatarContract(null as unknown)).not.toThrow();
+      expect(() => ContractValidator.validateAvatarContract(undefined as unknown)).not.toThrow();
+      expect(() => ContractValidator.validateChatInterfaceContract(null as unknown)).not.toThrow();
+      expect(() => ContractValidator.validateThreeDRoomContract(null as unknown)).not.toThrow();
     });
     
     it('should handle empty objects', () => {

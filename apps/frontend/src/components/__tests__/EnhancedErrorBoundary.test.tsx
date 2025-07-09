@@ -189,6 +189,22 @@ describe('Enhanced Error Boundary', () => {
       // Should show working component again
       expect(screen.getByText('Working component')).toBeInTheDocument();
     });
+
+    it('should handle async errors gracefully', async () => {
+      render(
+        <ErrorBoundary>
+          <AsyncThrowingComponent shouldThrow={true} />
+        </ErrorBoundary>
+      );
+      
+      // Initially should show the component
+      expect(screen.getByText('Async component')).toBeInTheDocument();
+      
+      // Wait for async error to occur
+      await waitFor(() => {
+        expect(screen.getByText('🚨 Something went wrong')).toBeInTheDocument();
+      }, { timeout: 1000 });
+    });
     
     it('should allow page reload', () => {
       const mockReload = vi.fn();
@@ -458,6 +474,10 @@ describe('Enhanced Error Boundary', () => {
         );
         
         expect(screen.getByText('🚨 Something went wrong')).toBeInTheDocument();
+        
+        // Use index to verify we're testing different error types
+        expect(error.constructor.name).toBe(['Error', 'TypeError', 'ReferenceError', 'RangeError'][index]);
+        
         unmount();
       });
     });
@@ -483,6 +503,10 @@ describe('Enhanced Error Boundary', () => {
         );
         
         expect(screen.getByText('🚨 Something went wrong')).toBeInTheDocument();
+        
+        // Use index to verify we're testing different component types
+        expect(['ThrowString', 'ThrowObject', 'ThrowNull'][index]).toBe(Component.name);
+        
         unmount();
       });
     });

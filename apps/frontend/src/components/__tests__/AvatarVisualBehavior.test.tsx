@@ -216,6 +216,10 @@ describe('Avatar Visual Behavior - Declarative Tests', () => {
       );
 
       const activeState = await qaValidator.captureAnimationState(mockCanvas);
+      
+      // Verify we start in an active state
+      expect(activeState.energyLevel).toBeGreaterThan(0.5);
+      expect(activeState.isActive).toBe(true);
 
       rerender(
         <Canvas>
@@ -228,6 +232,9 @@ describe('Avatar Visual Behavior - Declarative Tests', () => {
       expect(returnAnalysis.isGradual).toBe(true);
       expect(returnAnalysis.reachesIdleState).toBe(true);
       expect(returnAnalysis.smoothness).toBeGreaterThan(0.8);
+      
+      // Verify transition from active state to idle
+      expect(returnAnalysis.fromState.energyLevel).toBe(activeState.energyLevel);
     });
   });
 

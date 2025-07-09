@@ -3,19 +3,8 @@ import type {
   IService,
   IContextManager,
   IMemorySystem,
-  IEmotionalIntelligence,
-  IContextCompression,
-  IContextValidation,
-  IFeedbackCollection,
-  IVoiceService,
-  IServiceFactory,
   RelevantMemoryResult,
-  MemoryStats,
-  ValidationResult,
-  CompressionResult,
-  EmotionalAnalysis,
-  FeedbackAnalytics,
-  VoiceConfiguration
+  MemoryStats
 } from '../ServiceInterfaces';
 import type { Context, ContextAnalysis, ContextManagerConfig } from '../../types/context';
 import type { ChatMessage } from '../../types/common';
@@ -97,7 +86,7 @@ class MockContextManager extends MockService implements IContextManager {
     };
   }
   
-  async analyzeContext(context: Context): Promise<ContextAnalysis> {
+  async analyzeContext(_context: Context): Promise<ContextAnalysis> {
     return {
       relevanceScore: 0.8,
       emotionalTone: { primary: 'neutral', intensity: 0.5, confidence: 0.8, indicators: [], timestamp: new Date() },
@@ -111,11 +100,11 @@ class MockContextManager extends MockService implements IContextManager {
     };
   }
   
-  async updateContext(updates: Partial<Context>): Promise<Context> {
+  async updateContext(_updates: Partial<Context>): Promise<Context> {
     return await this.processMessage({ id: 'test', content: 'test', timestamp: Date.now(), sender: 'user' });
   }
   
-  async clearSession(preserveProfile?: boolean): Promise<void> {
+  async clearSession(_preserveProfile?: boolean): Promise<void> {
     // Mock clear session
   }
   
@@ -175,11 +164,11 @@ class MockContextManager extends MockService implements IContextManager {
     };
   }
   
-  addEventListener(event: string, handler: (event: any) => void): () => void {
+  addEventListener(_event: string, _handler: (event: any) => void): () => void {
     return () => {};
   }
   
-  removeEventListener(event: string, handler: (event: any) => void): void {
+  removeEventListener(_event: string, _handler: (event: any) => void): void {
     // Mock remove event listener
   }
   
@@ -193,7 +182,7 @@ class MockContextManager extends MockService implements IContextManager {
     };
   }
   
-  updateConfig(updates: Partial<ContextManagerConfig>): void {
+  updateConfig(_updates: Partial<ContextManagerConfig>): void {
     // Mock update config
   }
 }
@@ -231,11 +220,11 @@ class MockMemorySystem extends MockService implements IMemorySystem {
     getStats: vi.fn().mockReturnValue({ activeProcessCount: 0, temporaryDataSize: 0, capacity: 20, utilizationPercentage: 0 })
   };
   
-  async processMessage(message: ChatMessage, context: Context): Promise<void> {
+  async processMessage(_message: ChatMessage, _context: Context): Promise<void> {
     // Mock process message
   }
   
-  async getRelevantMemories(query: string): Promise<RelevantMemoryResult> {
+  async getRelevantMemories(_query: string): Promise<RelevantMemoryResult> {
     return {
       recentMessages: [],
       significantInteractions: [],
@@ -244,7 +233,7 @@ class MockMemorySystem extends MockService implements IMemorySystem {
     };
   }
   
-  async clearMemory(type: 'short' | 'long' | 'working' | 'all'): Promise<void> {
+  async clearMemory(_type: 'short' | 'long' | 'working' | 'all'): Promise<void> {
     // Mock clear memory
   }
   

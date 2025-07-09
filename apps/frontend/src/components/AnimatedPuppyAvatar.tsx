@@ -41,7 +41,7 @@ const AnimatedPuppyAvatar: React.FC<AnimatedPuppyAvatarProps> = ({
       
       breathingController.current = new BreathingController(breathingParams);
     }
-  }, []);
+  }, [isSpeaking, userIsTyping]); // Add dependencies since we use them in the effect
 
   // Update breathing parameters based on avatar state
   useEffect(() => {
